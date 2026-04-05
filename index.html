@@ -160,6 +160,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <span class="ton-val blue" id="ton-gifts-total">—</span>
     </div>
     <div class="ton-row">
+      <span class="ton-lbl">Портфель в TON</span>
+      <span class="ton-val blue" id="ton-portfolio-ton">—</span>
+    </div>
+    <div class="ton-row">
       <span class="ton-lbl">Курс TON<span class="ton-rate-age" id="ton-age"></span></span>
       <span class="ton-val" id="ton-rate-val">—</span>
     </div>
@@ -190,12 +194,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   </div>
 </div>
 
+<!-- ── MODAL: GIFT DETAIL ── -->
+<div class="ov" id="ov-gift-det" onclick="bgClose(event,'ov-gift-det')">
+  <div class="modal">
+    <div class="handle"></div>
+    <div id="gift-det-content"></div>
+  </div>
+</div>
+
 <!-- ── MODAL: ADD GIFT ── -->
 <div class="ov" id="ov-gift-add" onclick="bgClose(event,'ov-gift-add')">
   <div class="modal">
     <div class="handle"></div>
     <h3>Добавить подарок</h3>
-    <div class="fg"><label>Кому</label><input id="g-per" placeholder="Иван" autocomplete="off"></div>
     <div class="frow">
       <div class="fg"><label>Коллекция</label><input id="g-col" placeholder="Sakura" autocomplete="off"></div>
       <div class="fg"><label>Модель / Стикер</label><input id="g-mod" placeholder="Silver Cat" autocomplete="off"></div>
@@ -215,7 +226,7 @@ const API = 'https://n8n.omut.studio/webhook';
 const tg  = window.Telegram && window.Telegram.WebApp;
 if (tg) { tg.expand(); tg.ready(); }
 
-let debts = [], gifts = [], curDebt = null;
+let debts = [], gifts = [], curDebt = null, curGift = null;
 let tonRate = null, tonRateAt = 0, curTab = 'debts';
 let _giftImgData = null;
 
@@ -232,7 +243,9 @@ function resizeImage(dataURL, maxPx, cb) {
 }
 
 document.addEventListener('paste', function(e) {
-  if (!document.getElementById('ov-gift-add').classList.contains('open')) return;
+  var inAdd = document.getElementById('ov-gift-add').classList.contains('open');
+  var inDet = document.getElementById('ov-gift-det').classList.contains('open');
+  if (!inAdd && !inDet) return;
   var items = e.clipboardData && e.clipboardData.items;
   if (!items) return;
   for (var i = 0; i < items.length; i++) {
@@ -241,9 +254,16 @@ document.addEventListener('paste', function(e) {
       var reader = new FileReader();
       reader.onload = function(ev) {
         resizeImage(ev.target.result, 400, function(small) {
-          _giftImgData = small;
-          var zone = document.getElementById('g-img-zone');
-          if (zone) { zone.style.backgroundImage='url('+small+')'; zone.textContent=''; zone.classList.add('has-img'); }
+          if (inAdd) {
+            _giftImgData = small;
+            var zone = document.getElementById('g-img-zone');
+            if (zone) { zone.style.backgroundImage='url('+small+')'; zone.textContent=''; zone.classList.add('has-img'); }
+          } else if (inDet && curGift) {
+            try { localStorage.setItem('gimg_'+curGift.id, small); } catch(x){}
+            var zone = document.getElementById('gd-img-zone');
+            if (zone) { zone.style.backgroundImage='url('+small+')'; zone.textContent=''; zone.classList.add('has-img'); }
+            renderGifts();
+          }
           haptic('light');
         });
       };
@@ -483,6 +503,13 @@ function delDebt() {
 function loadGifts() {
   fetch(API+'/freelance-gifts').then(r=>r.json()).then(function(d) {
     gifts = d.gifts || [];
+    var pending = localStorage.getItem('gimg_pending');
+    if (pending && gifts.length) {
+      var last = gifts[gifts.length-1];
+      if (last && last.id && !localStorage.getItem('gimg_'+last.id)) {
+        try { localStorage.setItem('gimg_'+last.id, pending); localStorage.removeItem('gimg_pending'); } catch(e){}
+      }
+    }
     renderGifts();
   }).catch(function() {
     document.getElementById('gifts-list').innerHTML = '<div class="empty"><i>⚠️</i><b>Ошибка загрузки</b></div>';
@@ -500,14 +527,13 @@ function renderGifts() {
   var html = '';
   gifts.slice().reverse().forEach(function(g) {
     var title = esc(g.collection)+(g.model?' · '+esc(g.model):'');
-    var sub   = esc(g.person)+(g.background?' · 🎨 '+esc(g.background):'');
+    var sub   = g.background ? '🎨 '+esc(g.background) : esc(g.date||'');
     var rubBdg = (tonRate&&g.price) ? ' <span class="bdg bdg-days">≈'+fmt(Number(g.price)*tonRate)+'</span>' : '';
-    var imgKey = 'gimg_'+(g.person||'')+'_'+(g.collection||'')+'_'+(g.model||'');
-    var gImg = localStorage.getItem(imgKey);
+    var gImg = g.id ? localStorage.getItem('gimg_'+g.id) : null;
     var avHtml = gImg
       ? '<div class="av av-g" style="background-image:url('+gImg+');background-size:cover;background-position:center"></div>'
       : '<div class="av av-g">🎁</div>';
-    html += '<div class="card" onclick="delGiftConfirm(\''+esc(g.id)+'\',\''+esc(g.person)+'\')">'
+    html += '<div class="card" onclick="openGiftDet(\''+esc(g.id)+'\')">'
       + avHtml
       + '<div class="cbody"><div class="ctitle">'+title+'</div><div class="csub">'+sub+'</div></div>'
       + '<div class="cright"><div class="camt blue">'+fmtTon(g.price)+'</div>'+rubBdg
@@ -521,7 +547,7 @@ function renderGifts() {
 // ── ADD GIFT ──────────────────────────────────────
 function openGiftAdd() {
   haptic('light');
-  ['g-per','g-col','g-mod','g-bg','g-pr'].forEach(function(id){ document.getElementById(id).value=''; });
+  ['g-col','g-mod','g-bg','g-pr'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('g-dt').value = new Date().toISOString().split('T')[0];
   _giftImgData = null;
   var zone = document.getElementById('g-img-zone');
@@ -535,37 +561,91 @@ function closeGiftAdd() {
   if(tg) tg.BackButton.hide();
 }
 function addGift() {
-  var per=document.getElementById('g-per').value.trim();
   var col=document.getElementById('g-col').value.trim();
   var mod=document.getElementById('g-mod').value.trim();
   var bg=document.getElementById('g-bg').value.trim();
   var pr=document.getElementById('g-pr').value.trim();
   var dt=document.getElementById('g-dt').value;
-  if (!per) { if(tg) tg.showAlert('Укажите кому'); else alert('Укажите кому'); return; }
+  if (!col) { if(tg) tg.showAlert('Укажите коллекцию'); else alert('Укажите коллекцию'); return; }
   var btn=document.getElementById('g-submit'); btn.disabled=true;
-  fetch(API+'/freelance-gifts-add?person='+encodeURIComponent(per)+'&collection='+encodeURIComponent(col)+'&model='+encodeURIComponent(mod)+'&background='+encodeURIComponent(bg)+'&price='+encodeURIComponent(pr)+'&date='+encodeURIComponent(dt)+'&gift='+encodeURIComponent(col+(mod?' '+mod:'')))
+  fetch(API+'/freelance-gifts-add?person=&collection='+encodeURIComponent(col)+'&model='+encodeURIComponent(mod)+'&background='+encodeURIComponent(bg)+'&price='+encodeURIComponent(pr)+'&date='+encodeURIComponent(dt)+'&gift='+encodeURIComponent(col+(mod?' '+mod:'')))
     .then(function(r){return r.json();})
     .then(function(d){
       btn.disabled=false;
       if(d.ok){
         notify('success');
         if(_giftImgData) {
-          var imgKey = 'gimg_'+per+'_'+col+'_'+mod;
-          try { localStorage.setItem(imgKey, _giftImgData); } catch(e){}
+          if (d.id) {
+            try { localStorage.setItem('gimg_'+d.id, _giftImgData); } catch(e){}
+          } else {
+            try { localStorage.setItem('gimg_pending', _giftImgData); } catch(e){}
+          }
           _giftImgData = null;
         }
         closeGiftAdd(); loadGifts();
       } else { if(tg) tg.showAlert('Ошибка'); else alert('Ошибка'); }
     }).catch(function(){ btn.disabled=false; });
 }
-function delGiftConfirm(id, person) {
+function openGiftDet(id) {
+  haptic('light');
+  curGift = gifts.find(function(g){ return g.id===id; });
+  if (!curGift) return;
+  renderGiftDet();
+  document.getElementById('ov-gift-det').classList.add('open');
+  if(tg) tg.BackButton.show(), tg.BackButton.onClick(closeGiftDet);
+}
+function closeGiftDet() {
+  document.getElementById('ov-gift-det').classList.remove('open');
+  if(tg) tg.BackButton.hide();
+  curGift = null;
+}
+function renderGiftDet() {
+  var g = curGift; if(!g) return;
+  var gImg = g.id ? localStorage.getItem('gimg_'+g.id) : null;
+  var zoneHtml = gImg
+    ? '<div class="g-img-zone has-img" id="gd-img-zone" style="background-image:url('+gImg+');height:160px"></div>'
+    : '<div class="g-img-zone" id="gd-img-zone" style="height:160px">📋 Вставьте фото (Ctrl+V)</div>';
+
+  var html = '<div class="det-head">'
+    + '<div class="det-av" style="background:var(--ton)">🎁</div>'
+    + '<div class="det-info"><h4>'+esc(g.collection||'Подарок')+'</h4>'
+    + '<p>'+esc(g.model||'')+(g.background?' · 🎨 '+esc(g.background):'')+'</p></div></div>';
+
+  html += '<div class="fg"><label>Фото (Ctrl+V)</label>'+zoneHtml+'</div>';
+
+  html += '<div class="det-total"><span>Цена</span><b style="color:var(--ton)">'+fmtTon(g.price)+'</b></div>';
+
+  if (g.collection||g.model) {
+    html += '<div class="hist-hd">Детали</div>';
+    if (g.collection) html += '<div class="hist-row"><span>Коллекция</span><span>'+esc(g.collection)+'</span></div>';
+    if (g.model)      html += '<div class="hist-row"><span>Модель</span><span>'+esc(g.model)+'</span></div>';
+    if (g.background) html += '<div class="hist-row"><span>Фон</span><span>'+esc(g.background)+'</span></div>';
+    if (g.date)       html += '<div class="hist-row"><span>Дата</span><span>'+esc(g.date)+'</span></div>';
+    if (tonRate&&g.price) html += '<div class="hist-row"><span>В рублях</span><span>≈'+fmt(Number(g.price)*tonRate)+'</span></div>';
+  }
+
+  html += '<div class="div"></div>';
+  html += '<button class="btn-d" onclick="delGiftFromDet()">🗑 Удалить</button>';
+
+  document.getElementById('gift-det-content').innerHTML = html;
+}
+function delGiftFromDet() {
+  if (!curGift) return;
   function go() {
     haptic('heavy');
+    var id = curGift.id;
     fetch(API+'/freelance-gifts-del?id='+encodeURIComponent(id))
       .then(function(r){return r.json();})
-      .then(function(d){ if(d.ok){ notify('success'); loadGifts(); } });
+      .then(function(d){
+        if(d.ok){
+          notify('success');
+          try { localStorage.removeItem('gimg_'+id); } catch(e){}
+          closeGiftDet(); loadGifts();
+        }
+      });
   }
-  if(tg) tg.showConfirm('Удалить подарок для '+person+'?', function(ok){ if(ok) go(); });
+  var name = curGift.collection+(curGift.model?' · '+curGift.model:'');
+  if(tg) tg.showConfirm('Удалить «'+name+'»?', function(ok){ if(ok) go(); });
   else if(confirm('Удалить?')) go();
 }
 
@@ -582,6 +662,7 @@ function renderTon() {
   var bal    = parseFloat(document.getElementById('ton-bal').value)||0;
   var gifts_sum = gifts.reduce(function(s,g){ return s+Number(g.price||0); },0);
   document.getElementById('ton-gifts-total').textContent = fmtTon(gifts_sum);
+  document.getElementById('ton-portfolio-ton').textContent = fmtTon(bal + gifts_sum);
   if (tonRate) {
     var age = Math.floor((Date.now()-tonRateAt)/60000);
     document.getElementById('ton-rate-val').textContent = fmt(tonRate).replace('\u00A0₽','') + '\u00A0₽';
