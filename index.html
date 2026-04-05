@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Freelance Tracker</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root {
+  --bg:   var(--tg-theme-bg-color,#ffffff);
+  --bg2:  var(--tg-theme-secondary-bg-color,#f1f1f1);
+  --text: var(--tg-theme-text-color,#000000);
+  --hint: var(--tg-theme-hint-color,#888888);
+  --link: var(--tg-theme-link-color,#2481cc);
+  --btn:  var(--tg-theme-button-color,#2481cc);
+  --btnt: var(--tg-theme-button-text-color,#ffffff);
+  --sep:  rgba(0,0,0,.08);
+  --red:  #e74c3c;
+  --ton:  #0098ea;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg2);color:var(--text);min-height:100vh;padding-bottom:80px}
+
+/* ── TABS ── */
+.tabs{display:flex;background:var(--bg);border-bottom:1px solid var(--sep);position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(0,0,0,.07)}
+.tab{flex:1;padding:11px 0 9px;text-align:center;font-size:11px;color:var(--hint);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;user-select:none}
+.tab.active{color:var(--btn);border-bottom-color:var(--btn);font-weight:700}
+.tab i{font-size:20px;display:block;margin-bottom:2px;font-style:normal}
+
+/* ── PAGE ── */
+.page{display:none;padding:12px}
+.page.active{display:block}
+
+/* ── SUMMARY ── */
+.summary{background:var(--btn);color:var(--btnt);border-radius:16px;padding:16px 20px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.sum-left .amount{font-size:28px;font-weight:700;letter-spacing:-.5px;line-height:1.1}
+.sum-left .label{font-size:12px;opacity:.8;margin-top:3px}
+.sum-badge{background:rgba(255,255,255,.2);border-radius:20px;padding:6px 14px;font-size:14px;font-weight:700}
+
+/* ── CARD ── */
+.card{background:var(--bg);border-radius:14px;padding:13px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 4px rgba(0,0,0,.05);cursor:pointer;transition:transform .12s,opacity .12s;-webkit-user-select:none}
+.card:active{transform:scale(.98);opacity:.85}
+.card.closed{opacity:.5}
+.av{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;flex-shrink:0}
+.av-d{background:var(--btn);color:var(--btnt)}
+.av-g{background:var(--ton);color:#fff;font-size:22px}
+.cbody{flex:1;min-width:0}
+.ctitle{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.csub{font-size:12px;color:var(--hint);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cright{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.camt{font-size:15px;font-weight:700}
+.camt.red{color:var(--red)}
+.camt.blue{color:var(--ton)}
+.bdg{font-size:10px;border-radius:8px;padding:2px 7px;font-weight:700;white-space:nowrap}
+.bdg-days{background:rgba(231,76,60,.12);color:var(--red)}
+.bdg-done{background:var(--bg2);color:var(--hint)}
+.bdg-ton{background:rgba(0,152,234,.12);color:var(--ton)}
+
+/* ── SKELETON ── */
+.skel{border-radius:14px;margin-bottom:8px;height:72px;background:linear-gradient(90deg,var(--bg2) 25%,var(--bg) 50%,var(--bg2) 75%);background-size:200% 100%;animation:sh 1.4s infinite}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:56px 20px;color:var(--hint)}
+.empty i{font-size:52px;display:block;margin-bottom:14px;font-style:normal}
+.empty b{display:block;font-size:17px;font-weight:600;color:var(--text);margin-bottom:6px}
+.empty span{font-size:14px;line-height:1.5}
+
+/* ── OVERLAY / MODAL ── */
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:flex-end;animation:fadeIn .2s}
+.ov.open{display:flex}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--bg);border-radius:20px 20px 0 0;padding:0 16px env(safe-area-inset-bottom,20px);width:100%;max-height:90vh;overflow-y:auto;animation:slideUp .25s cubic-bezier(.32,1.25,.4,1)}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.handle{width:36px;height:4px;background:var(--hint);opacity:.3;border-radius:2px;margin:12px auto 18px}
+.modal h3{font-size:18px;font-weight:700;margin-bottom:16px}
+
+/* ── FORM ── */
+.fg{margin-bottom:13px}
+.fg label{display:block;font-size:11px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.fg input,.fg select{width:100%;padding:12px 13px;border:1.5px solid var(--sep);border-radius:10px;font-size:15px;background:var(--bg2);color:var(--text);outline:none;-webkit-appearance:none}
+.fg input:focus,.fg select:focus{border-color:var(--btn);background:var(--bg)}
+.frow{display:flex;gap:10px}
+.frow .fg{flex:1}
+
+/* ── BUTTONS ── */
+.btn-p{width:100%;padding:14px;background:var(--btn);color:var(--btnt);border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;margin-top:8px}
+.btn-p:disabled{opacity:.5}
+.btn-o{width:100%;padding:12px;background:none;color:var(--btn);border:1.5px solid var(--btn);border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px}
+.btn-d{width:100%;padding:12px;background:none;color:var(--red);border:none;border-radius:12px;font-size:15px;cursor:pointer;margin-top:4px}
+
+/* ── DETAIL ── */
+.det-head{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.det-av{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;background:var(--btn);color:var(--btnt);flex-shrink:0}
+.det-info h4{font-size:17px;font-weight:700}
+.det-info p{font-size:13px;color:var(--hint);margin-top:2px}
+.det-total{background:var(--bg2);border-radius:12px;padding:13px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.det-total span{font-size:13px;color:var(--hint)}
+.det-total b{font-size:22px;font-weight:700;color:var(--red)}
+.hist-hd{font-size:11px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px}
+.hist-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--sep);font-size:14px}
+.hist-row:last-child{border-bottom:none}
+.hist-empty{color:var(--hint);font-size:13px;text-align:center;padding:10px 0}
+.div{height:1px;background:var(--sep);margin:14px 0}
+
+/* ── TON TAB ── */
+.ton-panel{background:var(--bg);border-radius:16px;padding:4px 16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.ton-row{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid var(--sep)}
+.ton-row:last-child{border-bottom:none}
+.ton-lbl{font-size:14px;color:var(--hint)}
+.ton-val{font-size:15px;font-weight:600}
+.ton-val.blue{color:var(--ton)}
+.ton-inp{background:none;border:none;border-bottom:2px solid var(--ton);font-size:15px;font-weight:600;color:var(--ton);text-align:right;outline:none;width:130px;padding:2px 0;font-family:inherit}
+.ton-rate-age{font-size:11px;color:var(--hint);margin-left:6px;font-weight:400}
+
+/* ── CLOSE DATE INPUT ── */
+.close-wrap{margin-bottom:13px}
+</style>
+</head>
+<body>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('debts')"><i>💸</i>Долги</div>
+  <div class="tab" onclick="showTab('gifts')"><i>🎁</i>Подарки</div>
+  <div class="tab" onclick="showTab('ton')"><i>💎</i>TON</div>
+</div>
+
+<!-- ── DEBTS ── -->
+<div id="tab-debts" class="page active">
+  <div id="debts-summary"></div>
+  <div id="debts-list"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+</div>
+
+<!-- ── GIFTS ── -->
+<div id="tab-gifts" class="page">
+  <div id="gifts-summary"></div>
+  <div id="gifts-list"><div class="skel"></div><div class="skel"></div></div>
+</div>
+
+<!-- ── TON ── -->
+<div id="tab-ton" class="page">
+  <div class="ton-panel" id="ton-panel">
+    <div class="ton-row">
+      <span class="ton-lbl">Мой баланс TON</span>
+      <input class="ton-inp" id="ton-bal" type="number" step="0.01" placeholder="0.00" inputmode="decimal">
+    </div>
+    <div class="ton-row">
+      <span class="ton-lbl">Куплено подарков</span>
+      <span class="ton-val blue" id="ton-gifts-total">—</span>
+    </div>
+    <div class="ton-row">
+      <span class="ton-lbl">Курс TON<span class="ton-rate-age" id="ton-age"></span></span>
+      <span class="ton-val" id="ton-rate-val">—</span>
+    </div>
+    <div class="ton-row">
+      <span class="ton-lbl">Портфель в ₽</span>
+      <span class="ton-val blue" id="ton-portfolio">—</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: ADD DEBT ── -->
+<div class="ov" id="ov-debt-add" onclick="bgClose(event,'ov-debt-add')">
+  <div class="modal">
+    <div class="handle"></div>
+    <h3>Добавить долг</h3>
+    <div class="fg"><label>Компания / Студия</label><input id="d-co" placeholder="СберБанк" autocomplete="off"></div>
+    <div class="fg"><label>Проект</label><input id="d-pr" placeholder="Сайт" autocomplete="off"></div>
+    <div class="frow">
+      <div class="fg"><label>Сумма (₽)</label><input id="d-am" type="number" inputmode="numeric" placeholder="15000"></div>
+      <div class="fg"><label>Менеджер</label><input id="d-mg" placeholder="Гриша" autocomplete="off"></div>
+    </div>
+    <button class="btn-p" id="d-submit" onclick="addDebt()">Добавить</button>
+  </div>
+</div>
+
+<!-- ── MODAL: DEBT DETAIL ── -->
+<div class="ov" id="ov-debt-det" onclick="bgClose(event,'ov-debt-det')">
+  <div class="modal">
+    <div class="handle"></div>
+    <div id="det-content"></div>
+  </div>
+</div>
+
+<!-- ── MODAL: ADD GIFT ── -->
+<div class="ov" id="ov-gift-add" onclick="bgClose(event,'ov-gift-add')">
+  <div class="modal">
+    <div class="handle"></div>
+    <h3>Добавить подарок</h3>
+    <div class="fg"><label>Кому</label><input id="g-per" placeholder="Иван" autocomplete="off"></div>
+    <div class="frow">
+      <div class="fg"><label>Коллекция</label><input id="g-col" placeholder="Sakura" autocomplete="off"></div>
+      <div class="fg"><label>Модель / Стикер</label><input id="g-mod" placeholder="Silver Cat" autocomplete="off"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Фон</label><input id="g-bg" placeholder="Blue" autocomplete="off"></div>
+      <div class="fg"><label>Цена (TON)</label><input id="g-pr" type="number" step="0.01" inputmode="decimal" placeholder="12.5"></div>
+    </div>
+    <div class="fg"><label>Дата покупки</label><input id="g-dt" type="date"></div>
+    <button class="btn-p" id="g-submit" onclick="addGift()">Добавить</button>
+  </div>
+</div>
+
+<script>
+const API = 'https://n8n.omut.studio/webhook';
+const tg  = window.Telegram && window.Telegram.WebApp;
+if (tg) { tg.expand(); tg.ready(); }
+
+let debts = [], gifts = [], curDebt = null;
+let tonRate = null, tonRateAt = 0, curTab = 'debts';
+
+// ── TABS ──────────────────────────────────────────
+function showTab(t) {
+  curTab = t;
+  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', ['debts','gifts','ton'][i]===t));
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+
+  if (t === 'debts') {
+    setupMainBtn('＋ Добавить долг', openDebtAdd);
+  } else if (t === 'gifts') {
+    setupMainBtn('＋ Добавить подарок', openGiftAdd);
+    if (!gifts.length) loadGifts();
+    if (!tonRate || Date.now()-tonRateAt > 300000) loadTonRate();
+  } else {
+    if (tg) tg.MainButton.hide();
+    if (!tonRate || Date.now()-tonRateAt > 300000) loadTonRate();
+  }
+}
+
+function setupMainBtn(text, fn) {
+  if (!tg) return;
+  tg.MainButton.setText(text);
+  tg.MainButton.show();
+  tg.MainButton.onClick && tg.MainButton.offClick(tg.MainButton._lastCb);
+  tg.MainButton._lastCb = fn;
+  tg.MainButton.onClick(fn);
+}
+
+// ── UTILS ─────────────────────────────────────────
+function fmt(n) { return new Intl.NumberFormat('ru-RU').format(Math.round(Number(n||0))) + '\u00A0₽'; }
+function fmtTon(n) { return (+n||0).toFixed(2) + '\u00A0TON'; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function initials(s) {
+  var p = String(s||'').trim().split(/\s+/);
+  return p.length >= 2 ? (p[0][0]+p[1][0]).toUpperCase() : String(s||'?')[0].toUpperCase();
+}
+function daysSince(d) {
+  if (!d) return '';
+  var days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+  if (days === 0) return 'сегодня';
+  if (days === 1) return 'вчера';
+  if (days < 7)  return days + '\u00A0дн.';
+  if (days < 30) return Math.floor(days/7) + '\u00A0нед.';
+  if (days < 365) return Math.floor(days/30) + '\u00A0мес.';
+  return Math.floor(days/365) + '\u00A0г.';
+}
+function fmtDate(d) {
+  if (!d) return '';
+  try { return new Date(d).toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}); } catch(e) { return d; }
+}
+function debtTotal(d) {
+  var base = Number(d.amount||0);
+  var paid = (d.history||[]).reduce(function(s,h){ return s+Number(h.amount||0); },0);
+  return base - paid;
+}
+function haptic(type) { try { if(tg) tg.HapticFeedback.impactOccurred(type||'medium'); } catch(e){} }
+function notify(type) { try { if(tg) tg.HapticFeedback.notificationOccurred(type||'success'); } catch(e){} }
+
+// ── DEBTS ─────────────────────────────────────────
+function loadDebts() {
+  fetch(API+'/freelance-api').then(r=>r.json()).then(function(d) {
+    debts = d.debts || [];
+    renderDebts();
+  }).catch(function() {
+    document.getElementById('debts-list').innerHTML = '<div class="empty"><i>⚠️</i><b>Ошибка загрузки</b><span>Проверьте соединение</span></div>';
+  });
+}
+
+function renderDebts() {
+  var active = debts.filter(function(d){ return !d.closedAt; });
+  var closed = debts.filter(function(d){ return d.closedAt; });
+  var total  = active.reduce(function(s,d){ return s+debtTotal(d); },0);
+
+  var sum = document.getElementById('debts-summary');
+  if (debts.length) {
+    sum.innerHTML = '<div class="summary"><div class="sum-left"><div class="amount">'+fmt(total)+'</div><div class="label">активных долгов</div></div><div class="sum-badge">'+active.length+'</div></div>';
+  } else { sum.innerHTML = ''; }
+
+  var html = '';
+  active.forEach(function(d) {
+    var tot = debtTotal(d);
+    var ds  = daysSince(d.createdAt);
+    html += '<div class="card" onclick="openDebtDet(\''+esc(d.id)+'\')">'
+      + '<div class="av av-d">'+esc(initials(d.company))+'</div>'
+      + '<div class="cbody"><div class="ctitle">'+esc(d.company)+'</div>'
+      + '<div class="csub">'+esc(d.project)+(d.manager?' · '+esc(d.manager):'')+'</div></div>'
+      + '<div class="cright"><div class="camt red">'+fmt(tot)+'</div>'
+      + (ds?'<div class="bdg bdg-days">'+ds+'</div>':'')
+      + '</div></div>';
+  });
+  closed.forEach(function(d) {
+    var ds = daysSince(d.closedAt);
+    html += '<div class="card closed" onclick="openDebtDet(\''+esc(d.id)+'\')">'
+      + '<div class="av av-d">'+esc(initials(d.company))+'</div>'
+      + '<div class="cbody"><div class="ctitle">'+esc(d.company)+'</div>'
+      + '<div class="csub">'+esc(d.project)+'</div></div>'
+      + '<div class="cright"><div class="camt">'+fmt(Number(d.amount||0))+'</div>'
+      + '<div class="bdg bdg-done">закрыт'+( ds?' '+ds:'')+'</div>'
+      + '</div></div>';
+  });
+  if (!html) html = '<div class="empty"><i>📭</i><b>Долгов нет</b><span>Нажмите + чтобы добавить</span></div>';
+  document.getElementById('debts-list').innerHTML = html;
+}
+
+// ── ADD DEBT ──────────────────────────────────────
+function openDebtAdd() {
+  haptic('light');
+  ['d-co','d-pr','d-am','d-mg'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('ov-debt-add').classList.add('open');
+  if(tg) tg.BackButton.show(), tg.BackButton.onClick(closeDebtAdd);
+  setTimeout(function(){ document.getElementById('d-co').focus(); },300);
+}
+function closeDebtAdd() {
+  document.getElementById('ov-debt-add').classList.remove('open');
+  if(tg) tg.BackButton.hide();
+}
+function addDebt() {
+  var co=document.getElementById('d-co').value.trim();
+  var pr=document.getElementById('d-pr').value.trim();
+  var am=document.getElementById('d-am').value.trim();
+  var mg=document.getElementById('d-mg').value.trim();
+  if (!co||!am) { if(tg) tg.showAlert('Заполните компанию и сумму'); else alert('Заполните поля'); return; }
+  var btn=document.getElementById('d-submit'); btn.disabled=true;
+  fetch(API+'/freelance-api-add?company='+encodeURIComponent(co)+'&project='+encodeURIComponent(pr)+'&amount='+encodeURIComponent(am)+'&manager='+encodeURIComponent(mg))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      btn.disabled=false;
+      if(d.ok){ notify('success'); closeDebtAdd(); loadDebts(); }
+      else { if(tg) tg.showAlert('Ошибка: '+d.error); else alert('Ошибка'); }
+    }).catch(function(){ btn.disabled=false; if(tg) tg.showAlert('Ошибка сети'); });
+}
+
+// ── DEBT DETAIL ───────────────────────────────────
+function openDebtDet(id) {
+  haptic('light');
+  curDebt = debts.find(function(d){ return d.id===id; });
+  if (!curDebt) return;
+  renderDet();
+  document.getElementById('ov-debt-det').classList.add('open');
+  if(tg) tg.BackButton.show(), tg.BackButton.onClick(closeDebtDet);
+}
+function closeDebtDet() {
+  document.getElementById('ov-debt-det').classList.remove('open');
+  if(tg) tg.BackButton.hide();
+  curDebt=null;
+}
+function renderDet() {
+  var d = curDebt; if(!d) return;
+  var tot = debtTotal(d);
+  var hist = d.history||[];
+  var html = '<div class="det-head">'
+    + '<div class="det-av">'+esc(initials(d.company))+'</div>'
+    + '<div class="det-info"><h4>'+esc(d.company)+'</h4><p>'+esc(d.project)+(d.manager?' · '+esc(d.manager):'')+'</p></div></div>';
+
+  html += '<div class="det-total"><span>Остаток долга</span><b>'+fmt(tot)+'</b></div>';
+
+  if (d.closedAt) {
+    html += '<div style="text-align:center;color:var(--hint);font-size:13px;padding:4px 0 8px">✅ Закрыт: '+fmtDate(d.closedAt)+'</div>';
+  } else {
+    html += '<div class="fg close-wrap"><label>Дата закрытия проекта</label><input id="det-close-dt" type="date" value="'+new Date().toISOString().split('T')[0]+'"></div>';
+    html += '<button class="btn-o" onclick="closeDebt()">Закрыть проект</button>';
+    html += '<div class="div"></div>';
+    html += '<div class="fg"><label>Добавить оплату (₽)</label><input id="det-pay-am" type="number" inputmode="numeric" placeholder="5000"></div>';
+    html += '<button class="btn-p" id="det-pay-btn" onclick="addPayment()">Записать оплату</button>';
+  }
+
+  html += '<div class="hist-hd">История оплат</div>';
+  if (hist.length) {
+    hist.slice().reverse().forEach(function(h){
+      html += '<div class="hist-row"><span>'+fmtDate(h.date)+'</span><span style="font-weight:600;color:var(--btn)">+'+fmt(h.amount)+'</span></div>';
+    });
+    var paid = hist.reduce(function(s,h){ return s+Number(h.amount||0); },0);
+    html += '<div class="hist-row"><span style="font-weight:600">Всего оплачено</span><span style="font-weight:700;color:var(--btn)">'+fmt(paid)+'</span></div>';
+  } else {
+    html += '<div class="hist-empty">Оплат ещё не было</div>';
+  }
+
+  html += '<div class="div"></div>';
+  html += '<div style="font-size:12px;color:var(--hint);margin-bottom:8px">Начальная сумма: '+fmt(d.amount)+' · Добавлен: '+fmtDate(d.createdAt)+'</div>';
+  html += '<button class="btn-d" onclick="delDebt()">🗑 Удалить долг</button>';
+
+  document.getElementById('det-content').innerHTML = html;
+}
+function closeDebt() {
+  var dt = document.getElementById('det-close-dt');
+  if (!dt||!dt.value) { if(tg) tg.showAlert('Выберите дату'); else alert('Выберите дату'); return; }
+  fetch(API+'/freelance-api-close?id='+encodeURIComponent(curDebt.id)+'&date='+encodeURIComponent(dt.value))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.ok){ notify('success'); curDebt.closedAt=dt.value; renderDet(); loadDebts(); }
+    });
+}
+function addPayment() {
+  var am = document.getElementById('det-pay-am').value.trim();
+  if (!am||Number(am)<=0) { if(tg) tg.showAlert('Введите сумму'); else alert('Введите сумму'); return; }
+  var btn=document.getElementById('det-pay-btn'); btn.disabled=true;
+  fetch(API+'/freelance-api-history?id='+encodeURIComponent(curDebt.id)+'&amount='+encodeURIComponent(am))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      btn.disabled=false;
+      if(d.ok){ notify('success'); curDebt.history=curDebt.history||[]; curDebt.history.push({amount:Number(am),date:new Date().toISOString()}); renderDet(); loadDebts(); }
+    }).catch(function(){ btn.disabled=false; });
+}
+function delDebt() {
+  function go() {
+    haptic('heavy');
+    fetch(API+'/freelance-api-del?id='+encodeURIComponent(curDebt.id))
+      .then(function(r){return r.json();})
+      .then(function(d){ if(d.ok){ notify('success'); closeDebtDet(); loadDebts(); } });
+  }
+  if(tg) tg.showConfirm('Удалить долг «'+curDebt.company+'»?', function(ok){ if(ok) go(); });
+  else if(confirm('Удалить?')) go();
+}
+
+// ── GIFTS ─────────────────────────────────────────
+function loadGifts() {
+  fetch(API+'/freelance-gifts').then(r=>r.json()).then(function(d) {
+    gifts = d.gifts || [];
+    renderGifts();
+  }).catch(function() {
+    document.getElementById('gifts-list').innerHTML = '<div class="empty"><i>⚠️</i><b>Ошибка загрузки</b></div>';
+  });
+}
+
+function renderGifts() {
+  var totTon = gifts.reduce(function(s,g){ return s+Number(g.price||0); },0);
+  var sum = document.getElementById('gifts-summary');
+  if (gifts.length) {
+    var rubStr = (tonRate ? ' · ' + fmt(totTon*tonRate) : '');
+    sum.innerHTML = '<div class="summary"><div class="sum-left"><div class="amount">'+fmtTon(totTon)+'</div><div class="label">потрачено на подарки'+rubStr+'</div></div><div class="sum-badge">'+gifts.length+'</div></div>';
+  } else { sum.innerHTML = ''; }
+
+  var html = '';
+  gifts.slice().reverse().forEach(function(g) {
+    var title = esc(g.collection)+(g.model?' · '+esc(g.model):'');
+    var sub   = esc(g.person)+(g.background?' · 🎨 '+esc(g.background):'');
+    var rubBdg = (tonRate&&g.price) ? ' <span class="bdg bdg-days">≈'+fmt(Number(g.price)*tonRate)+'</span>' : '';
+    html += '<div class="card" onclick="delGiftConfirm(\''+esc(g.id)+'\',\''+esc(g.person)+'\')">'
+      + '<div class="av av-g">🎁</div>'
+      + '<div class="cbody"><div class="ctitle">'+title+'</div><div class="csub">'+sub+'</div></div>'
+      + '<div class="cright"><div class="camt blue">'+fmtTon(g.price)+'</div>'+rubBdg
+      + '<div class="bdg bdg-ton">'+esc(g.date||'')+'</div>'
+      + '</div></div>';
+  });
+  if (!html) html = '<div class="empty"><i>🎁</i><b>Подарков нет</b><span>Нажмите + чтобы добавить</span></div>';
+  document.getElementById('gifts-list').innerHTML = html;
+}
+
+// ── ADD GIFT ──────────────────────────────────────
+function openGiftAdd() {
+  haptic('light');
+  ['g-per','g-col','g-mod','g-bg','g-pr'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('g-dt').value = new Date().toISOString().split('T')[0];
+  document.getElementById('ov-gift-add').classList.add('open');
+  if(tg) tg.BackButton.show(), tg.BackButton.onClick(closeGiftAdd);
+  setTimeout(function(){ document.getElementById('g-per').focus(); },300);
+}
+function closeGiftAdd() {
+  document.getElementById('ov-gift-add').classList.remove('open');
+  if(tg) tg.BackButton.hide();
+}
+function addGift() {
+  var per=document.getElementById('g-per').value.trim();
+  var col=document.getElementById('g-col').value.trim();
+  var mod=document.getElementById('g-mod').value.trim();
+  var bg=document.getElementById('g-bg').value.trim();
+  var pr=document.getElementById('g-pr').value.trim();
+  var dt=document.getElementById('g-dt').value;
+  if (!per) { if(tg) tg.showAlert('Укажите кому'); else alert('Укажите кому'); return; }
+  var btn=document.getElementById('g-submit'); btn.disabled=true;
+  fetch(API+'/freelance-gifts-add?person='+encodeURIComponent(per)+'&collection='+encodeURIComponent(col)+'&model='+encodeURIComponent(mod)+'&background='+encodeURIComponent(bg)+'&price='+encodeURIComponent(pr)+'&date='+encodeURIComponent(dt)+'&gift='+encodeURIComponent(col+(mod?' '+mod:'')))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      btn.disabled=false;
+      if(d.ok){ notify('success'); closeGiftAdd(); loadGifts(); }
+      else { if(tg) tg.showAlert('Ошибка'); else alert('Ошибка'); }
+    }).catch(function(){ btn.disabled=false; });
+}
+function delGiftConfirm(id, person) {
+  function go() {
+    haptic('heavy');
+    fetch(API+'/freelance-gifts-del?id='+encodeURIComponent(id))
+      .then(function(r){return r.json();})
+      .then(function(d){ if(d.ok){ notify('success'); loadGifts(); } });
+  }
+  if(tg) tg.showConfirm('Удалить подарок для '+person+'?', function(ok){ if(ok) go(); });
+  else if(confirm('Удалить?')) go();
+}
+
+// ── TON ───────────────────────────────────────────
+function loadTonRate() {
+  fetch('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=rub')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var r = d['the-open-network'] && d['the-open-network']['rub'];
+      if(r){ tonRate=r; tonRateAt=Date.now(); renderTon(); if(curTab==='gifts') renderGifts(); }
+    }).catch(function(){});
+}
+function renderTon() {
+  var bal    = parseFloat(document.getElementById('ton-bal').value)||0;
+  var gifts_sum = gifts.reduce(function(s,g){ return s+Number(g.price||0); },0);
+  document.getElementById('ton-gifts-total').textContent = fmtTon(gifts_sum);
+  if (tonRate) {
+    var age = Math.floor((Date.now()-tonRateAt)/60000);
+    document.getElementById('ton-rate-val').textContent = fmt(tonRate).replace('\u00A0₽','') + '\u00A0₽';
+    document.getElementById('ton-age').textContent = age < 1 ? ' · только что' : ' · '+age+'\u00A0мин. назад';
+    var portfolio = (bal + gifts_sum) * tonRate;
+    document.getElementById('ton-portfolio').textContent = fmt(portfolio);
+  }
+}
+
+document.getElementById('ton-bal').addEventListener('input', function(){
+  localStorage.setItem('ton_bal', this.value);
+  renderTon();
+});
+document.getElementById('ton-bal').value = localStorage.getItem('ton_bal') || '';
+
+// ── MODAL HELPERS ─────────────────────────────────
+function bgClose(e, id) {
+  if (e.target === document.getElementById(id)) {
+    document.getElementById(id).classList.remove('open');
+    if(tg) tg.BackButton.hide();
+  }
+}
+
+// ── INIT ──────────────────────────────────────────
+loadDebts();
+setupMainBtn('＋ Добавить долг', openDebtAdd);
+loadTonRate();
+</script>
+</body>
+</html>
