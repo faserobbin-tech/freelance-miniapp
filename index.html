@@ -120,6 +120,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .save-date-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:13px}
 .save-date-row .fg{flex:1;margin-bottom:0}
 .btn-save{padding:12px 14px;background:var(--btn);color:var(--btnt);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
+/* ── SORT ── */
+.sort-bar{display:flex;justify-content:flex-end;margin-bottom:8px}
+.sort-toggle-btn{padding:6px 13px;background:var(--bg);border:1.5px solid var(--sep);border-radius:10px;font-size:13px;font-weight:600;color:var(--hint);cursor:pointer}
+.sort-toggle-btn.active{background:var(--btn);color:var(--btnt);border-color:var(--btn)}
+.sort-arrows{display:flex;flex-direction:column;gap:3px;flex-shrink:0;margin-right:2px}
+.sort-arrow{width:30px;height:30px;border:1.5px solid var(--sep);border-radius:8px;background:var(--bg2);color:var(--text);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+.sort-arrow:active{background:var(--btn);color:var(--btnt)}
 /* ── GIFT IMAGE ZONE ── */
 .g-img-zone{border:1.5px dashed var(--sep);border-radius:10px;height:90px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--hint);margin-bottom:13px;background-size:cover;background-position:center;background-repeat:no-repeat;cursor:pointer;overflow:hidden;transition:border-color .2s}
 .g-img-zone.has-img{border-color:var(--btn)}
@@ -131,7 +138,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <body>
 
 <div class="tabs">
-  <div class="tab active" onclick="showTab('debts')"><i>💸</i>Долги</div>
+  <div class="tab active" onclick="showTab('debts')"><i>💸</i>Фрилансы</div>
   <div class="tab" onclick="showTab('gifts')"><i>🎁</i>Подарки</div>
   <div class="tab" onclick="showTab('ton')"><i>💎</i>TON</div>
 </div>
@@ -208,11 +215,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div class="handle"></div>
     <h3>Добавить подарок</h3>
     <div class="frow">
-      <div class="fg"><label>Коллекция</label><input id="g-col" placeholder="Sakura" autocomplete="off"></div>
-      <div class="fg"><label>Модель / Стикер</label><input id="g-mod" placeholder="Silver Cat" autocomplete="off"></div>
+      <div class="fg"><label>Коллекция</label><input id="g-col" list="dl-col" placeholder="Sakura" autocomplete="off"><datalist id="dl-col"></datalist></div>
+      <div class="fg"><label>Модель / Стикер</label><input id="g-mod" list="dl-mod" placeholder="Silver Cat" autocomplete="off"><datalist id="dl-mod"></datalist></div>
     </div>
     <div class="frow">
-      <div class="fg"><label>Фон</label><input id="g-bg" placeholder="Blue" autocomplete="off"></div>
+      <div class="fg"><label>Фон</label><input id="g-bg" list="dl-bg" placeholder="Blue" autocomplete="off"><datalist id="dl-bg"></datalist></div>
       <div class="fg"><label>Цена (TON)</label><input id="g-pr" type="number" step="0.01" inputmode="decimal" placeholder="12.5"></div>
     </div>
     <div class="fg"><label>Дата покупки</label><input id="g-dt" type="date"></div>
@@ -229,6 +236,50 @@ if (tg) { tg.expand(); tg.ready(); }
 let debts = [], gifts = [], curDebt = null, curGift = null;
 let tonRate = null, tonRateAt = 0, curTab = 'debts';
 let _giftImgData = null;
+let sortMode = null; // 'debts' | 'gifts' | null
+
+// ── ORDER ─────────────────────────────────────────
+function getOrder(key) { try { return JSON.parse(localStorage.getItem('ord_'+key)||'[]'); } catch(e){ return []; } }
+function setOrder(key, arr) { localStorage.setItem('ord_'+key, JSON.stringify(arr)); }
+function applyOrder(items, key) {
+  var order = getOrder(key);
+  if (!order.length) return items.slice();
+  var map = {}; items.forEach(function(x){ map[x.id]=x; });
+  var sorted = [];
+  order.forEach(function(id){ if(map[id]){ sorted.push(map[id]); delete map[id]; } });
+  Object.keys(map).forEach(function(id){ sorted.push(map[id]); });
+  return sorted;
+}
+function toggleSort(type) {
+  sortMode = (sortMode===type) ? null : type;
+  if (type==='debts') renderDebts(); else renderGifts();
+}
+function moveItem(type, id, dir) {
+  var key = type;
+  var items = type==='debts' ? debts.filter(function(d){return !d.closedAt;}) : gifts.slice().reverse();
+  var ordered = applyOrder(items, key);
+  var idx = ordered.findIndex ? ordered.findIndex(function(x){return x.id===id;}) : (function(){ for(var i=0;i<ordered.length;i++) if(ordered[i].id===id) return i; return -1; })();
+  var newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= ordered.length) return;
+  var tmp = ordered[idx]; ordered[idx]=ordered[newIdx]; ordered[newIdx]=tmp;
+  setOrder(key, ordered.map(function(x){return x.id;}));
+  haptic('light');
+  if (type==='debts') renderDebts(); else renderGifts();
+}
+
+// ── AUTOCOMPLETE ──────────────────────────────────
+function getAC(field) { try { return JSON.parse(localStorage.getItem('ac_'+field)||'[]'); } catch(e){ return []; } }
+function addAC(field, val) {
+  if (!val) return;
+  var arr = getAC(field);
+  var i = arr.indexOf(val); if (i!==-1) arr.splice(i,1);
+  arr.unshift(val); if(arr.length>40) arr.pop();
+  localStorage.setItem('ac_'+field, JSON.stringify(arr));
+}
+function updateDL(dlId, field) {
+  var dl = document.getElementById(dlId); if(!dl) return;
+  dl.innerHTML = getAC(field).map(function(v){ return '<option value="'+esc(v)+'">'; }).join('');
+}
 
 function resizeImage(dataURL, maxPx, cb) {
   var img = new Image();
@@ -365,17 +416,31 @@ function renderDebts() {
     sum.innerHTML = '<div class="summary"><div class="sum-left"><div class="amount">'+fmt(total)+'</div><div class="label">активных долгов</div></div><div class="sum-badge">'+active.length+'</div></div>';
   } else { sum.innerHTML = ''; }
 
-  var html = '';
-  active.forEach(function(d) {
+  var isSortD = sortMode === 'debts';
+  var html = '<div class="sort-bar"><button class="sort-toggle-btn'+(isSortD?' active':'')+'" onclick="toggleSort(\'debts\')">'+(isSortD?'✓ Готово':'⇅ Порядок')+'</button></div>';
+  var orderedActive = applyOrder(active, 'debts');
+  orderedActive.forEach(function(d) {
     var tot = debtTotal(d);
     var dl  = d._deadline;
-    html += '<div class="card" onclick="openDebtDet(\''+esc(d.id)+'\')">'
-      + '<div class="av av-d">'+esc(initials(d.company))+'</div>'
-      + '<div class="cbody"><div class="ctitle">'+esc(d.company)+'</div>'
-      + '<div class="csub">'+esc(d.project)+(d.manager?' · '+esc(d.manager):'')+'</div></div>'
-      + '<div class="cright"><div class="camt red">'+fmt(tot)+'</div>'
-      + deadlineBadge(dl)
-      + '</div></div>';
+    if (isSortD) {
+      html += '<div class="card" style="cursor:default">'
+        + '<div class="sort-arrows">'
+        + '<button class="sort-arrow" onclick="moveItem(\'debts\',\''+esc(d.id)+'\',-1)">↑</button>'
+        + '<button class="sort-arrow" onclick="moveItem(\'debts\',\''+esc(d.id)+'\',1)">↓</button>'
+        + '</div>'
+        + '<div class="av av-d">'+esc(initials(d.company))+'</div>'
+        + '<div class="cbody"><div class="ctitle">'+esc(d.company)+'</div>'
+        + '<div class="csub">'+esc(d.project)+(d.manager?' · '+esc(d.manager):'')+'</div></div>'
+        + '<div class="cright"><div class="camt red">'+fmt(tot)+'</div>'
+        + deadlineBadge(dl)+'</div></div>';
+    } else {
+      html += '<div class="card" onclick="openDebtDet(\''+esc(d.id)+'\')">'
+        + '<div class="av av-d">'+esc(initials(d.company))+'</div>'
+        + '<div class="cbody"><div class="ctitle">'+esc(d.company)+'</div>'
+        + '<div class="csub">'+esc(d.project)+(d.manager?' · '+esc(d.manager):'')+'</div></div>'
+        + '<div class="cright"><div class="camt red">'+fmt(tot)+'</div>'
+        + deadlineBadge(dl)+'</div></div>';
+    }
   });
   closed.forEach(function(d) {
     var ds = daysSince(d.closedAt);
@@ -524,8 +589,10 @@ function renderGifts() {
     sum.innerHTML = '<div class="summary"><div class="sum-left"><div class="amount">'+fmtTon(totTon)+'</div><div class="label">потрачено на подарки'+rubStr+'</div></div><div class="sum-badge">'+gifts.length+'</div></div>';
   } else { sum.innerHTML = ''; }
 
-  var html = '';
-  gifts.slice().reverse().forEach(function(g) {
+  var isSortG = sortMode === 'gifts';
+  var orderedGifts = applyOrder(gifts.slice().reverse(), 'gifts');
+  var html = '<div class="sort-bar"><button class="sort-toggle-btn'+(isSortG?' active':'')+'" onclick="toggleSort(\'gifts\')">'+(isSortG?'✓ Готово':'⇅ Порядок')+'</button></div>';
+  orderedGifts.forEach(function(g) {
     var title = esc(g.collection)+(g.model?' · '+esc(g.model):'');
     var sub   = g.background ? '🎨 '+esc(g.background) : esc(g.date||'');
     var rubBdg = (tonRate&&g.price) ? ' <span class="bdg bdg-days">≈'+fmt(Number(g.price)*tonRate)+'</span>' : '';
@@ -533,14 +600,25 @@ function renderGifts() {
     var avHtml = gImg
       ? '<div class="av av-g" style="background-image:url('+gImg+');background-size:cover;background-position:center"></div>'
       : '<div class="av av-g">🎁</div>';
-    html += '<div class="card" onclick="openGiftDet(\''+esc(g.id)+'\')">'
-      + avHtml
-      + '<div class="cbody"><div class="ctitle">'+title+'</div><div class="csub">'+sub+'</div></div>'
-      + '<div class="cright"><div class="camt blue">'+fmtTon(g.price)+'</div>'+rubBdg
-      + '<div class="bdg bdg-ton">'+esc(g.date||'')+'</div>'
-      + '</div></div>';
+    if (isSortG) {
+      html += '<div class="card" style="cursor:default">'
+        + '<div class="sort-arrows">'
+        + '<button class="sort-arrow" onclick="moveItem(\'gifts\',\''+esc(g.id)+'\',-1)">↑</button>'
+        + '<button class="sort-arrow" onclick="moveItem(\'gifts\',\''+esc(g.id)+'\',1)">↓</button>'
+        + '</div>'
+        + avHtml
+        + '<div class="cbody"><div class="ctitle">'+title+'</div><div class="csub">'+sub+'</div></div>'
+        + '<div class="cright"><div class="camt blue">'+fmtTon(g.price)+'</div>'+rubBdg
+        + '<div class="bdg bdg-ton">'+esc(g.date||'')+'</div></div></div>';
+    } else {
+      html += '<div class="card" onclick="openGiftDet(\''+esc(g.id)+'\')">'
+        + avHtml
+        + '<div class="cbody"><div class="ctitle">'+title+'</div><div class="csub">'+sub+'</div></div>'
+        + '<div class="cright"><div class="camt blue">'+fmtTon(g.price)+'</div>'+rubBdg
+        + '<div class="bdg bdg-ton">'+esc(g.date||'')+'</div></div></div>';
+    }
   });
-  if (!html) html = '<div class="empty"><i>🎁</i><b>Подарков нет</b><span>Нажмите + чтобы добавить</span></div>';
+  if (orderedGifts.length===0) html = '<div class="empty"><i>🎁</i><b>Подарков нет</b><span>Нажмите + чтобы добавить</span></div>';
   document.getElementById('gifts-list').innerHTML = html;
 }
 
@@ -550,6 +628,7 @@ function openGiftAdd() {
   ['g-col','g-mod','g-bg','g-pr'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('g-dt').value = new Date().toISOString().split('T')[0];
   _giftImgData = null;
+  updateDL('dl-col','col'); updateDL('dl-mod','mod'); updateDL('dl-bg','bg');
   var zone = document.getElementById('g-img-zone');
   if (zone) { zone.style.backgroundImage=''; zone.textContent='📋 Вставьте скриншот'; zone.classList.remove('has-img'); }
   document.getElementById('ov-gift-add').classList.add('open');
@@ -574,6 +653,7 @@ function addGift() {
       btn.disabled=false;
       if(d.ok){
         notify('success');
+        addAC('col',col); addAC('mod',mod); addAC('bg',bg);
         if(_giftImgData) {
           if (d.id) {
             try { localStorage.setItem('gimg_'+d.id, _giftImgData); } catch(e){}
