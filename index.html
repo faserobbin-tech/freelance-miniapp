@@ -120,6 +120,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .save-date-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:13px}
 .save-date-row .fg{flex:1;margin-bottom:0}
 .btn-save{padding:12px 14px;background:var(--btn);color:var(--btnt);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
+/* ── GIFT IMAGE ZONE ── */
+.g-img-zone{border:1.5px dashed var(--sep);border-radius:10px;height:90px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--hint);margin-bottom:13px;background-size:cover;background-position:center;background-repeat:no-repeat;cursor:pointer;overflow:hidden;transition:border-color .2s}
+.g-img-zone.has-img{border-color:var(--btn)}
 /* ── LOCKED SCREEN ── */
 .locked{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center;color:var(--hint)}
 .locked i{font-size:64px;display:block;margin-bottom:20px}
@@ -150,7 +153,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div class="ton-panel" id="ton-panel">
     <div class="ton-row">
       <span class="ton-lbl">Мой баланс TON</span>
-      <input class="ton-inp" id="ton-bal" type="number" step="0.01" placeholder="0.00" inputmode="decimal">
+      <input class="ton-inp" id="ton-bal" type="text" placeholder="0.00" inputmode="decimal">
     </div>
     <div class="ton-row">
       <span class="ton-lbl">Куплено подарков</span>
@@ -202,6 +205,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <div class="fg"><label>Цена (TON)</label><input id="g-pr" type="number" step="0.01" inputmode="decimal" placeholder="12.5"></div>
     </div>
     <div class="fg"><label>Дата покупки</label><input id="g-dt" type="date"></div>
+    <div class="fg"><label>Фото (Ctrl+V)</label><div class="g-img-zone" id="g-img-zone">📋 Вставьте скриншот</div></div>
     <button class="btn-p" id="g-submit" onclick="addGift()">Добавить</button>
   </div>
 </div>
@@ -213,6 +217,41 @@ if (tg) { tg.expand(); tg.ready(); }
 
 let debts = [], gifts = [], curDebt = null;
 let tonRate = null, tonRateAt = 0, curTab = 'debts';
+let _giftImgData = null;
+
+function resizeImage(dataURL, maxPx, cb) {
+  var img = new Image();
+  img.onload = function() {
+    var s = Math.min(maxPx/img.width, maxPx/img.height, 1);
+    var c = document.createElement('canvas');
+    c.width = img.width*s; c.height = img.height*s;
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    cb(c.toDataURL('image/jpeg', 0.82));
+  };
+  img.src = dataURL;
+}
+
+document.addEventListener('paste', function(e) {
+  if (!document.getElementById('ov-gift-add').classList.contains('open')) return;
+  var items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') !== -1) {
+      var blob = items[i].getAsFile();
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        resizeImage(ev.target.result, 400, function(small) {
+          _giftImgData = small;
+          var zone = document.getElementById('g-img-zone');
+          if (zone) { zone.style.backgroundImage='url('+small+')'; zone.textContent=''; zone.classList.add('has-img'); }
+          haptic('light');
+        });
+      };
+      reader.readAsDataURL(blob);
+      break;
+    }
+  }
+});
 
 // ── TABS ──────────────────────────────────────────
 function showTab(t) {
@@ -222,7 +261,7 @@ function showTab(t) {
   document.getElementById('tab-'+t).classList.add('active');
 
   if (t === 'debts') {
-    setupMainBtn('＋ Добавить долг', openDebtAdd);
+    setupMainBtn('＋ Добавить', openDebtAdd);
   } else if (t === 'gifts') {
     setupMainBtn('＋ Добавить подарок', openGiftAdd);
     if (!gifts.length) loadGifts();
@@ -385,12 +424,12 @@ function renderDet() {
   html += '<div class="det-total"><span>Долг</span><b>'+fmt(tot)+'</b></div>';
 
   html += '<div class="save-date-row">'
-    + '<div class="fg"><label>Дедлайн проекта</label><input id="det-close-dt" type="date" value="'+esc(dl)+'"></div>'
+    + '<div class="fg"><label>Дедлайн</label><input id="det-close-dt" type="date" value="'+esc(dl)+'"></div>'
     + '<button class="btn-save" onclick="saveDeadline()">Сохранить</button>'
     + '</div>';
 
   html += '<div class="div"></div>';
-  html += '<div class="fg"><label>Добавить к долгу (₽)</label><input id="det-pay-am" type="number" inputmode="numeric" placeholder="5000"></div>';
+  html += '<div class="fg"><label>Добавить (₽)</label><input id="det-pay-am" type="number" inputmode="numeric" placeholder="5000"></div>';
   html += '<button class="btn-p" id="det-pay-btn" onclick="addWork()">Записать работу</button>';
 
   html += '<div class="hist-hd">История работы</div>';
@@ -398,13 +437,13 @@ function renderDet() {
     hist.slice().reverse().forEach(function(h){
       html += '<div class="hist-row"><span>'+fmtDate(h.date)+'</span><span style="font-weight:600;color:var(--btn)">+'+fmt(h.amount)+'</span></div>';
     });
-    html += '<div class="hist-row"><span style="font-weight:600">Итого заработано</span><span style="font-weight:700;color:var(--btn)">'+fmt(tot)+'</span></div>';
+    html += '<div class="hist-row"><span style="font-weight:600">Итого</span><span style="font-weight:700;color:var(--btn)">'+fmt(tot)+'</span></div>';
   } else {
     html += '<div class="hist-empty">Записей ещё нет</div>';
   }
 
   html += '<div class="div"></div>';
-  html += '<button class="btn-d" onclick="delDebt()">🗑 Удалить долг</button>';
+  html += '<button class="btn-d" onclick="delDebt()">🗑 Удалить</button>';
 
   document.getElementById('det-content').innerHTML = html;
 }
@@ -463,8 +502,13 @@ function renderGifts() {
     var title = esc(g.collection)+(g.model?' · '+esc(g.model):'');
     var sub   = esc(g.person)+(g.background?' · 🎨 '+esc(g.background):'');
     var rubBdg = (tonRate&&g.price) ? ' <span class="bdg bdg-days">≈'+fmt(Number(g.price)*tonRate)+'</span>' : '';
+    var imgKey = 'gimg_'+(g.person||'')+'_'+(g.collection||'')+'_'+(g.model||'');
+    var gImg = localStorage.getItem(imgKey);
+    var avHtml = gImg
+      ? '<div class="av av-g" style="background-image:url('+gImg+');background-size:cover;background-position:center"></div>'
+      : '<div class="av av-g">🎁</div>';
     html += '<div class="card" onclick="delGiftConfirm(\''+esc(g.id)+'\',\''+esc(g.person)+'\')">'
-      + '<div class="av av-g">🎁</div>'
+      + avHtml
       + '<div class="cbody"><div class="ctitle">'+title+'</div><div class="csub">'+sub+'</div></div>'
       + '<div class="cright"><div class="camt blue">'+fmtTon(g.price)+'</div>'+rubBdg
       + '<div class="bdg bdg-ton">'+esc(g.date||'')+'</div>'
@@ -479,6 +523,9 @@ function openGiftAdd() {
   haptic('light');
   ['g-per','g-col','g-mod','g-bg','g-pr'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('g-dt').value = new Date().toISOString().split('T')[0];
+  _giftImgData = null;
+  var zone = document.getElementById('g-img-zone');
+  if (zone) { zone.style.backgroundImage=''; zone.textContent='📋 Вставьте скриншот'; zone.classList.remove('has-img'); }
   document.getElementById('ov-gift-add').classList.add('open');
   if(tg) tg.BackButton.show(), tg.BackButton.onClick(closeGiftAdd);
   setTimeout(function(){ document.getElementById('g-per').focus(); },300);
@@ -500,8 +547,15 @@ function addGift() {
     .then(function(r){return r.json();})
     .then(function(d){
       btn.disabled=false;
-      if(d.ok){ notify('success'); closeGiftAdd(); loadGifts(); }
-      else { if(tg) tg.showAlert('Ошибка'); else alert('Ошибка'); }
+      if(d.ok){
+        notify('success');
+        if(_giftImgData) {
+          var imgKey = 'gimg_'+per+'_'+col+'_'+mod;
+          try { localStorage.setItem(imgKey, _giftImgData); } catch(e){}
+          _giftImgData = null;
+        }
+        closeGiftAdd(); loadGifts();
+      } else { if(tg) tg.showAlert('Ошибка'); else alert('Ошибка'); }
     }).catch(function(){ btn.disabled=false; });
 }
 function delGiftConfirm(id, person) {
@@ -538,8 +592,28 @@ function renderTon() {
 }
 
 document.getElementById('ton-bal').addEventListener('input', function(){
-  localStorage.setItem('ton_bal', this.value);
-  renderTon();
+  if (/^[\d\.\s]*$/.test(this.value)) {
+    localStorage.setItem('ton_bal', this.value);
+    renderTon();
+  }
+});
+document.getElementById('ton-bal').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') {
+    var val = this.value.trim();
+    if (/^[\d\s\+\-\*\/\.\(\)]+$/.test(val)) {
+      try {
+        var result = Function('return (' + val + ')')();
+        if (typeof result === 'number' && isFinite(result)) {
+          this.value = parseFloat(result.toFixed(4));
+          localStorage.setItem('ton_bal', this.value);
+          renderTon();
+          haptic('light');
+        }
+      } catch(e) {}
+    }
+    e.preventDefault();
+    this.blur();
+  }
 });
 document.getElementById('ton-bal').value = localStorage.getItem('ton_bal') || '';
 
@@ -559,7 +633,7 @@ function bgClose(e, id) {
     return;
   }
   loadDebts();
-  setupMainBtn('＋ Добавить долг', openDebtAdd);
+  setupMainBtn('＋ Добавить', openDebtAdd);
   loadTonRate();
 })();
 </script>
