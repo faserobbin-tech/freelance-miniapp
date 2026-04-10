@@ -120,6 +120,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .save-date-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:13px}
 .save-date-row .fg{flex:1;margin-bottom:0}
 .btn-save{padding:12px 14px;background:var(--btn);color:var(--btnt);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
+/* ── SECTION HEADER ── */
+.sect-hd{font-size:11px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.5px;padding:16px 0 8px;border-top:1px solid var(--sep);margin-top:4px;display:flex;justify-content:space-between;align-items:center}
+/* ── SIGN TOGGLE ── */
+.sign-wrap{display:flex;gap:8px;align-items:flex-end;margin-bottom:13px}
+.sign-wrap .fg{flex:1;margin-bottom:0}
+.sign-toggle{display:flex;border:1.5px solid var(--sep);border-radius:10px;overflow:hidden;height:46px;flex-shrink:0}
+.sign-btn{width:38px;border:none;background:var(--bg2);color:var(--hint);font-size:20px;font-weight:700;cursor:pointer;transition:all .15s;padding:0}
+.sign-btn.active-add{background:rgba(36,129,204,.18);color:var(--btn)}
+.sign-btn.active-sub{background:rgba(231,76,60,.18);color:var(--red)}
+/* ── HIST ACCENT ROW ── */
+.hist-acc-row{display:flex;align-items:stretch;padding:9px 0;border-bottom:1px solid var(--sep)}
+.hist-acc-row:last-child{border-bottom:none}
+.hist-acc{width:3px;border-radius:3px;flex-shrink:0;margin-right:10px;align-self:stretch;min-height:28px}
 /* ── SEARCH ── */
 .search-inp{width:100%;padding:10px 13px;border:1.5px solid var(--sep);border-radius:10px;font-size:15px;background:var(--bg);color:var(--text);outline:none;margin-bottom:8px}
 .search-inp:focus{border-color:var(--btn)}
@@ -243,6 +256,15 @@ let tonRate = null, tonRateAt = 0, curTab = 'debts';
 let _giftImgData = null;
 let sortMode = null;
 let giftSearch = '';
+let _detHistOpen = false;
+let _workSign = 1;
+function toggleDetHist() { _detHistOpen = !_detHistOpen; renderDet(); }
+function setWorkSign(s) {
+  _workSign = s;
+  document.querySelectorAll('.sign-btn').forEach(function(btn, i) {
+    btn.className = 'sign-btn' + (i===0 ? (s===1?' active-add':'') : (s===-1?' active-sub':''));
+  });
+}
 
 function clientColor(name) {
   var palette = ['#e74c3c','#e67e22','#27ae60','#2980b9','#8e44ad','#16a085','#d35400','#c0392b','#2471a3','#1e8449','#6c3483','#117a65'];
@@ -414,8 +436,8 @@ function fmtDateTime(d) {
   if (!d) return '';
   try {
     var dt = new Date(d);
-    return dt.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'})
-      + ', ' + dt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+    return dt.toLocaleDateString('ru-RU',{day:'numeric',month:'short'}).replace(/\s*г\.$/,'')
+      + ' · ' + dt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
   } catch(e) { return d; }
 }
 function debtTotal(d) {
@@ -457,7 +479,7 @@ function renderDebts() {
 
   var sum = document.getElementById('debts-summary');
   if (debts.length) {
-    sum.innerHTML = '<div class="summary"><div class="sum-left"><div class="amount">'+fmt(total)+'</div><div class="label">активных долгов</div></div><div class="sum-badge">'+active.length+'</div></div>';
+    sum.innerHTML = '<div class="summary"><div class="sum-left"><div class="amount">'+fmt(total)+'</div><div class="label">Доходы</div></div><div class="sum-badge">'+active.length+'</div></div>';
   } else { sum.innerHTML = ''; }
 
   var isSortD = sortMode === 'debts';
@@ -531,6 +553,7 @@ function addDebt() {
 // ── DEBT DETAIL ───────────────────────────────────
 function openDebtDet(id) {
   haptic('light');
+  _detHistOpen = false; _workSign = 1;
   curDebt = debts.find(function(d){ return d.id===id; });
   if (!curDebt) return;
   renderDet();
@@ -545,41 +568,69 @@ function closeDebtDet() {
 function renderDet() {
   var d = curDebt; if(!d) return;
   var tot = debtTotal(d);
-  var hist = d.history||[];
+  var hist = (d.history||[]).filter(function(h){ return Number(h.amount||0) !== 0; });
   var dl = d._deadline || '';
+
+  // ── ЗАГОЛОВОК ──
   var html = '<div class="det-head">'
     + '<div class="det-av" style="background:'+clientColor(d.company)+'">'+esc(initials(d.company))+'</div>'
     + '<div class="det-info"><h4>'+esc(d.company)+'</h4><p>'+esc(d.project)+(d.manager?' · '+esc(d.manager):'')+'</p></div></div>';
 
-  html += '<div class="det-total"><span>Долг</span><b>'+fmt(tot)+'</b></div>';
+  // ── СУММА ДОЛГА — главный блок ──
+  html += '<div style="text-align:center;padding:4px 0 16px">'
+    + '<div style="font-size:11px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Доход</div>'
+    + '<div style="font-size:36px;font-weight:700;color:var(--red);letter-spacing:-.5px">'+fmt(tot)+'</div>'
+    + '</div>';
 
+  // ── ДЕДЛАЙН ──
+  html += '<div class="sect-hd">Дедлайн</div>';
   html += '<div class="save-date-row">'
-    + '<div class="fg"><label>Дедлайн</label><input id="det-close-dt" type="date" value="'+esc(dl)+'"></div>'
+    + '<div class="fg"><input id="det-close-dt" type="date" value="'+esc(dl)+'"></div>'
     + '<button class="btn-save" onclick="saveDeadline()">Сохранить</button>'
     + '</div>';
 
-  html += '<div class="div"></div>';
+  // ── ЗАПИСАТЬ РАБОТУ ──
   var today = new Date().toISOString().split('T')[0];
-  html += '<div class="frow"><div class="fg"><label>Дата</label><input id="det-pay-dt" type="date" value="'+today+'"></div>'
-    + '<div class="fg" style="flex:2"><label>Сумма ₽ (− чтобы убрать)</label><input id="det-pay-am" type="number" inputmode="numeric" placeholder="5000 или -1000"></div></div>';
+  html += '<div class="sect-hd">Записать работу</div>';
+  html += '<div class="fg"><label>Дата</label><input id="det-pay-dt" type="date" value="'+today+'"></div>';
+  html += '<div class="sign-wrap">'
+    + '<div class="fg"><label>Сумма (₽)</label><input id="det-pay-am" type="number" inputmode="numeric" placeholder="5000"></div>'
+    + '<div class="sign-toggle">'
+    + '<button class="sign-btn'+(_workSign===1?' active-add':'')+'" onclick="setWorkSign(1)">＋</button>'
+    + '<button class="sign-btn'+(_workSign===-1?' active-sub':'')+'" onclick="setWorkSign(-1)">−</button>'
+    + '</div></div>';
   html += '<div class="fg"><label>Комментарий</label><input id="det-pay-cm" placeholder="Необязательно" autocomplete="off"></div>';
   html += '<button class="btn-p" id="det-pay-btn" onclick="addWork()">Записать</button>';
 
-  html += renderSparkline(hist);
-  html += '<div class="hist-hd">История работы</div>';
-  if (hist.length) {
-    hist.slice().reverse().forEach(function(h){
-      var amNum = Number(h.amount||0);
-      var amColor = amNum < 0 ? 'var(--red)' : 'var(--btn)';
-      var amStr = (amNum > 0 ? '+' : '') + fmt(h.amount);
-      html += '<div class="hist-row" style="align-items:flex-start"><div>'
-        + '<div>'+fmtDateTime(h.date)+'</div>'
-        + (h.comment ? '<div style="font-size:11px;color:var(--hint);margin-top:2px">'+esc(h.comment)+'</div>' : '')
-        + '</div><span style="font-weight:600;color:'+amColor+';white-space:nowrap;margin-left:8px">'+amStr+'</span></div>';
-    });
-    html += '<div class="hist-row"><span style="font-weight:600">Итого</span><span style="font-weight:700;color:var(--btn)">'+fmt(tot)+'</span></div>';
-  } else {
-    html += '<div class="hist-empty">Записей ещё нет</div>';
+  // ── ИСТОРИЯ (коллапсируемая) ──
+  var histCount = hist.length;
+  html += '<div class="sect-hd" style="cursor:pointer" onclick="toggleDetHist()">'
+    + 'История работы' + (histCount ? ' <span style="background:var(--bg2);border-radius:8px;padding:1px 7px;font-size:10px">'+histCount+'</span>' : '')
+    + '<span style="font-size:13px;color:var(--btn);margin-left:auto">'+(_detHistOpen?'▲':'▼')+'</span>'
+    + '</div>';
+  if (_detHistOpen) {
+    if (histCount) {
+      hist.slice().reverse().forEach(function(h){
+        var amNum = Number(h.amount||0);
+        var amColor = amNum < 0 ? 'var(--red)' : 'var(--btn)';
+        var accColor = amNum < 0 ? '#e74c3c' : '#2481cc';
+        var amStr = (amNum > 0 ? '+' : '') + fmt(h.amount);
+        html += '<div class="hist-acc-row">'
+          + '<div class="hist-acc" style="background:'+accColor+'"></div>'
+          + '<div style="flex:1;min-width:0">'
+          + '<div style="font-size:13px;color:var(--text)">'+fmtDateTime(h.date)+'</div>'
+          + (h.comment ? '<div style="font-size:11px;color:var(--hint);margin-top:2px">'+esc(h.comment)+'</div>' : '')
+          + '</div>'
+          + '<span style="font-weight:600;color:'+amColor+';white-space:nowrap;margin-left:10px;font-size:14px">'+amStr+'</span>'
+          + '</div>';
+      });
+      html += '<div class="hist-acc-row" style="background:var(--bg2);border-radius:8px;margin-top:4px;padding:9px 12px">'
+        + '<span style="font-weight:700;font-size:13px">Итого</span>'
+        + '<span style="font-weight:700;color:var(--btn);margin-left:auto">'+fmt(tot)+'</span>'
+        + '</div>';
+    } else {
+      html += '<div class="hist-empty">Записей ещё нет</div>';
+    }
   }
 
   html += '<div class="div"></div>';
@@ -602,13 +653,14 @@ function addWork() {
   var cm = document.getElementById('det-pay-cm').value.trim();
   var dt = document.getElementById('det-pay-dt').value;
   if (!am || Number(am) === 0) { if(tg) tg.showAlert('Введите сумму'); else alert('Введите сумму'); return; }
+  var signedAm = String(Math.abs(Number(am)) * _workSign);
   var btn=document.getElementById('det-pay-btn'); btn.disabled=true;
   var entryDate = dt ? (new Date(dt + 'T' + new Date().toTimeString().slice(0,8)).toISOString()) : new Date().toISOString();
-  fetch(API+'/freelance-api-history?id='+encodeURIComponent(curDebt.id)+'&amount='+encodeURIComponent(am)+'&comment='+encodeURIComponent(cm)+'&date='+encodeURIComponent(entryDate))
+  fetch(API+'/freelance-api-history?id='+encodeURIComponent(curDebt.id)+'&amount='+encodeURIComponent(signedAm)+'&comment='+encodeURIComponent(cm)+'&date='+encodeURIComponent(entryDate))
     .then(function(r){return r.json();})
     .then(function(d){
       btn.disabled=false;
-      if(d.ok){ notify('success'); curDebt.history=curDebt.history||[]; curDebt.history.push({amount:Number(am),date:entryDate,comment:cm}); renderDet(); loadDebts(); }
+      if(d.ok){ notify('success'); curDebt.history=curDebt.history||[]; curDebt.history.push({amount:Number(signedAm),date:entryDate,comment:cm}); renderDet(); loadDebts(); }
     }).catch(function(){ btn.disabled=false; });
 }
 function delDebt() {
