@@ -120,6 +120,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .save-date-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:13px}
 .save-date-row .fg{flex:1;margin-bottom:0}
 .btn-save{padding:12px 14px;background:var(--btn);color:var(--btnt);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
+/* ── SEARCH ── */
+.search-inp{width:100%;padding:10px 13px;border:1.5px solid var(--sep);border-radius:10px;font-size:15px;background:var(--bg);color:var(--text);outline:none;margin-bottom:8px}
+.search-inp:focus{border-color:var(--btn)}
 /* ── SORT ── */
 .sort-bar{display:flex;justify-content:flex-end;margin-bottom:8px}
 .sort-toggle-btn{padding:6px 13px;background:var(--bg);border:1.5px solid var(--sep);border-radius:10px;font-size:13px;font-weight:600;color:var(--hint);cursor:pointer}
@@ -152,6 +155,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <!-- ── GIFTS ── -->
 <div id="tab-gifts" class="page">
   <div id="gifts-summary"></div>
+  <input class="search-inp" id="gift-search" placeholder="🔍 Коллекция, модель, фон..." oninput="giftSearch=this.value.trim();renderGifts()">
   <div id="gifts-list"><div class="skel"></div><div class="skel"></div></div>
 </div>
 
@@ -237,7 +241,38 @@ if (tg) { tg.expand(); tg.ready(); }
 let debts = [], gifts = [], curDebt = null, curGift = null;
 let tonRate = null, tonRateAt = 0, curTab = 'debts';
 let _giftImgData = null;
-let sortMode = null; // 'debts' | 'gifts' | null
+let sortMode = null;
+let giftSearch = '';
+
+function clientColor(name) {
+  var palette = ['#e74c3c','#e67e22','#27ae60','#2980b9','#8e44ad','#16a085','#d35400','#c0392b','#2471a3','#1e8449','#6c3483','#117a65'];
+  var h = 0, s = String(name||'');
+  for (var i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h<<5) - h);
+  return palette[Math.abs(h) % palette.length];
+}
+
+function renderSparkline(history) {
+  if (!history || history.length < 2) return '';
+  var byDay = {};
+  history.forEach(function(h) {
+    var day = h.date ? h.date.split('T')[0] : null;
+    if (day) byDay[day] = (byDay[day]||0) + Number(h.amount||0);
+  });
+  var days = Object.keys(byDay).sort();
+  if (days.length < 2) return '';
+  var vals = days.map(function(d){ return byDay[d]; });
+  var maxV = Math.max.apply(null, vals.map(Math.abs));
+  if (!maxV) return '';
+  var H = 44, gap = 2, bw = Math.max(4, Math.floor((260 - gap*days.length) / days.length));
+  var W = days.length * (bw + gap);
+  var bars = vals.map(function(v, i) {
+    var bh = Math.max(3, Math.round(Math.abs(v)/maxV*(H-4)));
+    var x = i*(bw+gap), y = H-bh;
+    return '<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+bh+'" rx="2" fill="'+(v<0?'#e74c3c':'#2481cc')+'" opacity="0.85"/>';
+  }).join('');
+  return '<div class="hist-hd" style="margin-top:14px">Активность</div>'
+    + '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:'+H+'px;display:block;margin-bottom:4px">'+bars+'</svg>';
+} // 'debts' | 'gifts' | null
 
 // ── ORDER ─────────────────────────────────────────
 function getOrder(key) { try { return JSON.parse(localStorage.getItem('ord_'+key)||'[]'); } catch(e){ return []; } }
@@ -431,20 +466,21 @@ function renderDebts() {
   orderedActive.forEach(function(d) {
     var tot = debtTotal(d);
     var dl  = d._deadline;
+    var clr = clientColor(d.company);
     if (isSortD) {
       html += '<div class="card" style="cursor:default">'
         + '<div class="sort-arrows">'
         + '<button class="sort-arrow" onclick="moveItem(\'debts\',\''+esc(d.id)+'\',-1)">↑</button>'
         + '<button class="sort-arrow" onclick="moveItem(\'debts\',\''+esc(d.id)+'\',1)">↓</button>'
         + '</div>'
-        + '<div class="av av-d">'+esc(initials(d.company))+'</div>'
+        + '<div class="av av-d" style="background:'+clr+'">'+esc(initials(d.company))+'</div>'
         + '<div class="cbody"><div class="ctitle">'+esc(d.company)+'</div>'
         + '<div class="csub">'+esc(d.project)+(d.manager?' · '+esc(d.manager):'')+'</div></div>'
         + '<div class="cright"><div class="camt red">'+fmt(tot)+'</div>'
         + deadlineBadge(dl)+'</div></div>';
     } else {
       html += '<div class="card" onclick="openDebtDet(\''+esc(d.id)+'\')">'
-        + '<div class="av av-d">'+esc(initials(d.company))+'</div>'
+        + '<div class="av av-d" style="background:'+clr+'">'+esc(initials(d.company))+'</div>'
         + '<div class="cbody"><div class="ctitle">'+esc(d.company)+'</div>'
         + '<div class="csub">'+esc(d.project)+(d.manager?' · '+esc(d.manager):'')+'</div></div>'
         + '<div class="cright"><div class="camt red">'+fmt(tot)+'</div>'
@@ -512,7 +548,7 @@ function renderDet() {
   var hist = d.history||[];
   var dl = d._deadline || '';
   var html = '<div class="det-head">'
-    + '<div class="det-av">'+esc(initials(d.company))+'</div>'
+    + '<div class="det-av" style="background:'+clientColor(d.company)+'">'+esc(initials(d.company))+'</div>'
     + '<div class="det-info"><h4>'+esc(d.company)+'</h4><p>'+esc(d.project)+(d.manager?' · '+esc(d.manager):'')+'</p></div></div>';
 
   html += '<div class="det-total"><span>Долг</span><b>'+fmt(tot)+'</b></div>';
@@ -529,6 +565,7 @@ function renderDet() {
   html += '<div class="fg"><label>Комментарий</label><input id="det-pay-cm" placeholder="Необязательно" autocomplete="off"></div>';
   html += '<button class="btn-p" id="det-pay-btn" onclick="addWork()">Записать</button>';
 
+  html += renderSparkline(hist);
   html += '<div class="hist-hd">История работы</div>';
   if (hist.length) {
     hist.slice().reverse().forEach(function(h){
@@ -612,6 +649,15 @@ function renderGifts() {
 
   var isSortG = sortMode === 'gifts';
   var orderedGifts = applyOrder(gifts.slice().reverse(), 'gifts');
+  if (giftSearch) {
+    var q = giftSearch.toLowerCase();
+    orderedGifts = orderedGifts.filter(function(g) {
+      return (g.collection||'').toLowerCase().indexOf(q)!==-1
+        || (g.model||'').toLowerCase().indexOf(q)!==-1
+        || (g.background||'').toLowerCase().indexOf(q)!==-1
+        || (g.market||'').toLowerCase().indexOf(q)!==-1;
+    });
+  }
   var html = '<div class="sort-bar"><button class="sort-toggle-btn'+(isSortG?' active':'')+'" onclick="toggleSort(\'gifts\')">'+(isSortG?'✓ Готово':'⇅ Порядок')+'</button></div>';
   orderedGifts.forEach(function(g) {
     var title = esc(g.collection)+(g.model?' · '+esc(g.model):'');
