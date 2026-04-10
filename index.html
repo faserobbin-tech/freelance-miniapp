@@ -88,7 +88,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .btn-p{width:100%;padding:15px;background:var(--btn);color:var(--btnt);border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;margin-top:8px}
 .btn-p:disabled{opacity:.5}
 .btn-o{width:100%;padding:13px;background:none;color:var(--btn);border:1.5px solid var(--btn);border-radius:14px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px}
-.btn-d{width:100%;padding:13px;background:rgba(231,76,60,.08);color:var(--red);border:none;border-radius:14px;font-size:15px;cursor:pointer;margin-top:4px}
+.btn-d{width:100%;padding:13px;background:rgba(231,76,60,.08);color:var(--red);border:none;border-radius:14px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:4px}
 
 /* ── DETAIL ── */
 .det-head{display:flex;align-items:center;gap:16px;margin-bottom:16px}
@@ -435,9 +435,9 @@ function showTab(t) {
   document.getElementById('tab-'+t).classList.add('active');
 
   if (t === 'debts') {
-    setupMainBtn('＋ Добавить', openDebtAdd);
+    setupMainBtn('Добавить', openDebtAdd);
   } else if (t === 'gifts') {
-    setupMainBtn('＋ Добавить подарок', openGiftAdd);
+    setupMainBtn('Добавить подарок', openGiftAdd);
     if (!gifts.length) loadGifts();
     if (!tonRate || Date.now()-tonRateAt > 300000) loadTonRate();
   } else {
@@ -551,14 +551,14 @@ function renderDebts() {
         + avHtml
         + '<div class="cbody"><div class="ctitle">'+esc(d.company)+'</div>'
         + '<div class="csub">'+esc(d.project)+(d.manager?' · '+esc(d.manager):'')+'</div></div>'
-        + '<div class="cright"><div class="camt red">'+fmt(tot)+'</div>'
+        + '<div class="cright"><div class="camt">'+fmt(tot)+'</div>'
         + deadlineBadge(dl)+'</div></div>';
     } else {
       html += '<div class="card" onclick="openDebtDet(\''+esc(d.id)+'\')">'
         + avHtml
         + '<div class="cbody"><div class="ctitle">'+esc(d.company)+'</div>'
         + '<div class="csub">'+esc(d.project)+(d.manager?' · '+esc(d.manager):'')+'</div></div>'
-        + '<div class="cright"><div class="camt red">'+fmt(tot)+'</div>'
+        + '<div class="cright"><div class="camt">'+fmt(tot)+'</div>'
         + deadlineBadge(dl)+'</div></div>';
     }
   });
@@ -617,7 +617,7 @@ function openDebtDet(id) {
 }
 function closeDebtDet() {
   document.getElementById('ov-debt-det').classList.remove('open');
-  if(tg) { tg.BackButton.hide(); setupMainBtn('＋ Добавить', openDebtAdd); }
+  if(tg) { tg.BackButton.hide(); setupMainBtn('Добавить', openDebtAdd); }
   curDebt=null;
 }
 function renderDet() {
@@ -712,29 +712,38 @@ function renderDet() {
     + '</div>';
   if (_detHistOpen) {
     if (histCount) {
-      hist.slice().reverse().forEach(function(h){
-        var amNum = Number(h.amount||0);
-        var amColor = amNum < 0 ? 'var(--red)' : 'var(--btn)';
-        var accColor = amNum < 0 ? '#e74c3c' : '#2481cc';
-        var amStr = (amNum > 0 ? '+' : '') + fmt(h.amount);
-        // Дата работы vs дата записи
-        var mainDate, subDate;
-        if (h.recordedAt) {
-          mainDate = fmtDateShort(h.date);
-          subDate = 'записано · ' + fmtDateTime(h.recordedAt);
-        } else {
-          mainDate = fmtDateTime(h.date);
-          subDate = null;
-        }
-        html += '<div class="hist-acc-row">'
-          + '<div class="hist-acc" style="background:'+accColor+'"></div>'
-          + '<div style="flex:1;min-width:0">'
-          + '<div style="font-size:13px;color:var(--text)">'+mainDate+'</div>'
-          + (subDate ? '<div style="font-size:10px;color:var(--hint);margin-top:1px">'+subDate+'</div>' : '')
-          + (h.comment ? '<div style="font-size:11px;color:var(--hint);margin-top:2px">'+esc(h.comment)+'</div>' : '')
-          + '</div>'
-          + '<span style="font-weight:600;color:'+amColor+';white-space:nowrap;margin-left:10px;font-size:14px">'+amStr+'</span>'
+      // ── Группировка по дням ──
+      var histRev = hist.slice().reverse();
+      var dayGroups = [], dayMap = {};
+      histRev.forEach(function(h) {
+        var dk = (h.date && h.date.length > 10) ? h.date.split('T')[0] : (h.date || 'nodate');
+        if (!dayMap[dk]) { dayMap[dk] = []; dayGroups.push({key:dk, entries:dayMap[dk]}); }
+        dayMap[dk].push(h);
+      });
+      dayGroups.forEach(function(g) {
+        // ── Разделитель дня ──
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:10px 0 4px">'
+          + '<span style="font-size:10px;font-weight:700;color:var(--hint);letter-spacing:.4px;white-space:nowrap">'+fmtDateShort(g.key)+'</span>'
+          + '<span style="flex:1;height:1px;background:var(--sep);display:block"></span>'
           + '</div>';
+        g.entries.forEach(function(h) {
+          var amNum = Number(h.amount||0);
+          var amColor = amNum < 0 ? 'var(--red)' : 'var(--btn)';
+          var accColor = amNum < 0 ? '#e74c3c' : '#2481cc';
+          var amStr = (amNum > 0 ? '+' : '') + fmt(h.amount);
+          // Время: только для старых записей (ISO timestamp) — новые (date-only) времени не имеют
+          var timeStr = (!h.recordedAt && h.date && h.date.length > 10)
+            ? new Date(h.date).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}) : '';
+          html += '<div class="hist-acc-row">'
+            + '<div class="hist-acc" style="background:'+accColor+'"></div>'
+            + '<div style="flex:1;min-width:0">'
+            + (timeStr ? '<div style="font-size:13px;color:var(--hint)">'+timeStr+'</div>' : '')
+            + (h.comment ? '<div style="font-size:11px;color:var(--hint);margin-top:'+(timeStr?'2px':'0')+'">'+esc(h.comment)+'</div>' : '')
+            + (!timeStr && !h.comment ? '<div style="font-size:12px;color:var(--hint)">—</div>' : '')
+            + '</div>'
+            + '<span style="font-weight:700;color:'+amColor+';white-space:nowrap;margin-left:10px;font-size:14px">'+amStr+'</span>'
+            + '</div>';
+        });
       });
     } else {
       html += '<div class="hist-empty">Записей ещё нет</div>';
@@ -742,7 +751,7 @@ function renderDet() {
   }
 
   html += '<div class="div"></div>';
-  html += '<button class="btn-d" onclick="delDebt()">🗑 Удалить</button>';
+  html += '<button class="btn-d" onclick="delDebt()">Удалить</button>';
 
   document.getElementById('det-content').innerHTML = html;
 }
@@ -946,7 +955,7 @@ function renderGiftDet() {
   }
 
   html += '<div class="div"></div>';
-  html += '<button class="btn-d" onclick="delGiftFromDet()">🗑 Удалить</button>';
+  html += '<button class="btn-d" onclick="delGiftFromDet()">Удалить</button>';
 
   document.getElementById('gift-det-content').innerHTML = html;
 }
@@ -1035,7 +1044,7 @@ function bgClose(e, id) {
     return;
   }
   loadDebts();
-  setupMainBtn('＋ Добавить', openDebtAdd);
+  setupMainBtn('Добавить', openDebtAdd);
   loadTonRate();
 })();
 </script>
