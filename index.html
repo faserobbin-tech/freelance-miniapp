@@ -48,9 +48,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .ctitle{font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .csub{font-size:12px;color:var(--hint);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cright{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
-.camt{font-size:16px;font-weight:800}
+.camt{font-size:17px;font-weight:800}
 .camt.red{color:var(--red)}
 .camt.blue{color:var(--ton)}
+.card-chev{font-size:18px;color:var(--hint);opacity:.25;flex-shrink:0;margin-left:2px;align-self:center;line-height:1}
+.ctitle-wrap{font-weight:700;font-size:15px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3;word-break:break-word}
 .bdg{font-size:10px;border-radius:9px;padding:3px 8px;font-weight:700;white-space:nowrap}
 .bdg-days{background:rgba(231,76,60,.12);color:var(--red)}
 .bdg-green{background:rgba(39,174,96,.12);color:#27ae60}
@@ -111,7 +113,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .ton-lbl{font-size:14px;color:var(--hint)}
 .ton-val{font-size:15px;font-weight:600}
 .ton-val.blue{color:var(--ton)}
-.ton-inp{background:none;border:none;border-bottom:2px solid var(--ton);font-size:15px;font-weight:600;color:var(--ton);text-align:right;outline:none;width:130px;padding:2px 0;font-family:inherit}
+.ton-inp{background:var(--bg2);border:1.5px solid var(--sep);border-radius:12px;font-size:15px;font-weight:600;color:var(--ton);text-align:right;outline:none;width:140px;padding:10px 12px;font-family:inherit;-webkit-appearance:none}
+.ton-inp:focus{border-color:var(--ton);background:var(--bg)}
+.ton-val.hero{font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.3px}
 .ton-rate-age{font-size:11px;color:var(--hint);margin-left:6px;font-weight:400}
 
 /* ── CLOSE DATE INPUT ── */
@@ -179,7 +183,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <!-- ── GIFTS ── -->
 <div id="tab-gifts" class="page">
   <div id="gifts-summary"></div>
-  <input class="search-inp" id="gift-search" placeholder="🔍 Коллекция, модель, фон..." oninput="giftSearch=this.value.trim();renderGifts()">
+  <input class="search-inp" id="gift-search" placeholder="Поиск: коллекция, модель, фон..." oninput="giftSearch=this.value.trim();renderGifts()">
   <div id="gifts-list"><div class="skel"></div><div class="skel"></div></div>
 </div>
 
@@ -204,7 +208,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     </div>
     <div class="ton-row">
       <span class="ton-lbl">Портфель в ₽</span>
-      <span class="ton-val blue" id="ton-portfolio">—</span>
+      <span class="ton-val hero" id="ton-portfolio">—</span>
     </div>
   </div>
 </div>
@@ -442,6 +446,7 @@ function showTab(t) {
     if (!tonRate || Date.now()-tonRateAt > 300000) loadTonRate();
   } else {
     if (tg) tg.MainButton.hide();
+    if (!gifts.length) loadGifts();
     if (!tonRate || Date.now()-tonRateAt > 300000) loadTonRate();
   }
 }
@@ -559,7 +564,8 @@ function renderDebts() {
         + '<div class="cbody"><div class="ctitle">'+esc(d.company)+'</div>'
         + '<div class="csub">'+esc(d.project)+(d.manager?' · '+esc(d.manager):'')+'</div></div>'
         + '<div class="cright"><div class="camt">'+fmt(tot)+'</div>'
-        + deadlineBadge(dl)+'</div></div>';
+        + deadlineBadge(dl)+'</div>'
+        + '<span class="card-chev">›</span></div>';
     }
   });
   closed.forEach(function(d) {
@@ -644,8 +650,8 @@ function renderDet() {
     html += '</div>';
   }
 
-  // ── СУММА — главный блок ──
-  html += '<div style="text-align:center;padding:4px 0 10px">'
+  // ── СУММА — главный блок в контейнере ──
+  html += '<div style="background:var(--bg2);border-radius:16px;text-align:center;padding:16px 20px 18px;margin:0 0 10px">'
     + '<div style="font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Доход</div>'
     + '<div style="font-size:44px;font-weight:800;color:var(--text);letter-spacing:-.5px;line-height:1">'+fmt(tot)+'</div>'
     + '</div>';
@@ -654,10 +660,10 @@ function renderDet() {
   if (dl) {
     var ms = new Date(dl).getTime() - Date.now();
     var days = Math.ceil(ms / 86400000);
-    var dlLabel = days > 0 ? 'через '+days+' дн.' : (days === 0 ? 'сегодня' : Math.abs(days)+' дн. просрочен');
+    var dlLabel = days > 0 ? 'через '+days+'\u00A0дн.' : (days === 0 ? 'сегодня' : Math.abs(days)+'\u00A0дн. просрочен');
     var dlColor = days <= 0 ? 'var(--red)' : (days <= 7 ? '#e67e22' : 'var(--hint)');
     html += '<div class="dl-inline" onclick="toggleDlEdit()">'
-      + '<span style="font-size:13px;color:'+dlColor+'">📅 '+fmtDateShort(dl)+'</span>'
+      + '<span style="font-size:13px;color:'+dlColor+'">до '+fmtDateShort(dl)+'</span>'
       + '<span style="font-size:12px;color:var(--hint)"> · '+dlLabel+'</span>'
       + '</div>';
   } else {
@@ -680,7 +686,7 @@ function renderDet() {
   var isCustom = !isToday && !isYest;
   var pickLabel = isCustom
     ? fmtDateShort(_workDate) + (_datePickOpen ? ' ▲' : ' ▼')
-    : (_datePickOpen ? '📅 ▲' : '📅 Другая');
+    : (_datePickOpen ? 'Другая ▲' : 'Другая ▼');
   html += '<div class="sect-hd">Записать работу</div>';
   // 1. Сумма + знак
   html += '<div class="sign-wrap">'
@@ -706,24 +712,28 @@ function renderDet() {
 
   // ── ИСТОРИЯ (коллапсируемая) ──
   var histCount = hist.length;
-  html += '<div class="sect-hd" style="cursor:pointer" onclick="toggleDetHist()">'
+  html += '<div class="sect-hd" style="cursor:pointer;margin-top:14px" onclick="toggleDetHist()">'
     + 'История работы' + (histCount ? ' <span style="background:var(--bg2);border-radius:8px;padding:1px 7px;font-size:10px">'+histCount+'</span>' : '')
     + '<span style="font-size:13px;color:var(--btn);margin-left:auto">'+(_detHistOpen?'▲':'▼')+'</span>'
     + '</div>';
   if (_detHistOpen) {
     if (histCount) {
-      // ── Группировка по дням ──
+      // ── Группировка по дням (локальная дата, не UTC) ──
       var histRev = hist.slice().reverse();
       var dayGroups = [], dayMap = {};
       histRev.forEach(function(h) {
-        var dk = (h.date && h.date.length > 10) ? h.date.split('T')[0] : (h.date || 'nodate');
+        var dk;
+        if (h.date && h.date.length > 10) {
+          var d0 = new Date(h.date);
+          dk = d0.getFullYear()+'-'+(d0.getMonth()+1).toString().padStart(2,'0')+'-'+d0.getDate().toString().padStart(2,'0');
+        } else { dk = h.date || 'nodate'; }
         if (!dayMap[dk]) { dayMap[dk] = []; dayGroups.push({key:dk, entries:dayMap[dk]}); }
         dayMap[dk].push(h);
       });
       dayGroups.forEach(function(g) {
         // ── Разделитель дня ──
         html += '<div style="display:flex;align-items:center;gap:8px;padding:10px 0 4px">'
-          + '<span style="font-size:10px;font-weight:700;color:var(--hint);letter-spacing:.4px;white-space:nowrap">'+fmtDateShort(g.key)+'</span>'
+          + '<span style="font-size:12px;font-weight:700;color:var(--hint);letter-spacing:.3px;white-space:nowrap">'+fmtDateShort(g.key)+'</span>'
           + '<span style="flex:1;height:1px;background:var(--sep);display:block"></span>'
           + '</div>';
         g.entries.forEach(function(h) {
@@ -814,6 +824,7 @@ function loadGifts() {
       }
     }
     renderGifts();
+    renderTon();
   }).catch(function() {
     document.getElementById('gifts-list').innerHTML = '<div class="empty"><i>⚠️</i><b>Ошибка загрузки</b></div>';
   });
@@ -841,7 +852,7 @@ function renderGifts() {
   var html = '<div class="sort-bar"><button class="sort-toggle-btn'+(isSortG?' active':'')+'" onclick="toggleSort(\'gifts\')">'+(isSortG?'✓ Готово':'⇅ Порядок')+'</button></div>';
   orderedGifts.forEach(function(g) {
     var title = esc(g.collection)+(g.model?' · '+esc(g.model):'');
-    var subParts = []; if(g.background) subParts.push('🎨 '+esc(g.background)); if(g.market) subParts.push('🏪 '+esc(g.market)); if(!subParts.length) subParts.push(esc(g.date||''));
+    var subParts = []; if(g.background) subParts.push(esc(g.background)); if(g.market) subParts.push(esc(g.market)); if(!subParts.length && g.date) subParts.push(fmtDateShort(g.date));
     var sub = subParts.join(' · ');
     var rubBdg = (tonRate&&g.price) ? ' <span class="bdg bdg-days">≈'+fmt(Number(g.price)*tonRate)+'</span>' : '';
     var gImg = g.id ? localStorage.getItem('gimg_'+g.id) : null;
@@ -849,21 +860,22 @@ function renderGifts() {
       ? '<div class="av av-g" style="background-image:url('+gImg+');background-size:cover;background-position:center"></div>'
       : '<div class="av av-g">🎁</div>';
     if (isSortG) {
-      html += '<div class="card" style="cursor:default">'
+      html += '<div class="card" style="cursor:default;align-items:flex-start">'
         + '<div class="sort-arrows">'
         + '<button class="sort-arrow" onclick="moveItem(\'gifts\',\''+esc(g.id)+'\',-1)">↑</button>'
         + '<button class="sort-arrow" onclick="moveItem(\'gifts\',\''+esc(g.id)+'\',1)">↓</button>'
         + '</div>'
         + avHtml
-        + '<div class="cbody"><div class="ctitle">'+title+'</div><div class="csub">'+sub+'</div></div>'
+        + '<div class="cbody"><div class="ctitle-wrap">'+title+'</div><div class="csub">'+sub+'</div></div>'
         + '<div class="cright"><div class="camt blue">'+fmtTon(g.price)+'</div>'+rubBdg
-        + '<div class="bdg bdg-ton">'+esc(g.date||'')+'</div></div></div>';
+        + '<div class="bdg bdg-ton">'+fmtDateShort(g.date||'')+'</div></div></div>';
     } else {
-      html += '<div class="card" onclick="openGiftDet(\''+esc(g.id)+'\')">'
+      html += '<div class="card" style="align-items:flex-start" onclick="openGiftDet(\''+esc(g.id)+'\')">'
         + avHtml
-        + '<div class="cbody"><div class="ctitle">'+title+'</div><div class="csub">'+sub+'</div></div>'
+        + '<div class="cbody"><div class="ctitle-wrap">'+title+'</div><div class="csub">'+sub+'</div></div>'
         + '<div class="cright"><div class="camt blue">'+fmtTon(g.price)+'</div>'+rubBdg
-        + '<div class="bdg bdg-ton">'+esc(g.date||'')+'</div></div></div>';
+        + '<div class="bdg bdg-ton">'+fmtDateShort(g.date||'')+'</div></div>'
+        + '<span class="card-chev">›</span></div>';
     }
   });
   if (orderedGifts.length===0) html = '<div class="empty"><i>🎁</i><b>Подарков нет</b><span>Нажмите + чтобы добавить</span></div>';
@@ -925,7 +937,7 @@ function openGiftDet(id) {
 }
 function closeGiftDet() {
   document.getElementById('ov-gift-det').classList.remove('open');
-  if(tg) { tg.BackButton.hide(); setupMainBtn('＋ Добавить', openGiftAdd); }
+  if(tg) { tg.BackButton.hide(); setupMainBtn('Добавить подарок', openGiftAdd); }
   curGift = null;
 }
 function renderGiftDet() {
@@ -938,21 +950,19 @@ function renderGiftDet() {
   var html = '<div class="det-head">'
     + '<div class="det-av" style="background:var(--ton)">🎁</div>'
     + '<div class="det-info"><h4>'+esc(g.collection||'Подарок')+'</h4>'
-    + '<p>'+esc(g.model||'')+(g.background?' · 🎨 '+esc(g.background):'')+'</p></div></div>';
+    + '<p>'+esc(g.model||'')+(g.background?' · '+esc(g.background):'')+'</p></div></div>';
 
-  html += '<div class="fg"><label>Фото (Ctrl+V)</label>'+zoneHtml+'</div>';
+  html += '<div class="fg"><label>Фото</label>'+zoneHtml+'</div>';
 
-  html += '<div class="det-total"><span>Цена</span><b style="color:var(--ton)">'+fmtTon(g.price)+'</b></div>';
-
-  if (g.collection||g.model) {
-    html += '<div class="hist-hd">Детали</div>';
-    if (g.collection) html += '<div class="hist-row"><span>Коллекция</span><span>'+esc(g.collection)+'</span></div>';
-    if (g.model)      html += '<div class="hist-row"><span>Модель</span><span>'+esc(g.model)+'</span></div>';
-    if (g.background) html += '<div class="hist-row"><span>Фон</span><span>'+esc(g.background)+'</span></div>';
-    if (g.date)       html += '<div class="hist-row"><span>Дата</span><span>'+esc(g.date)+'</span></div>';
-    if (g.market)     html += '<div class="hist-row"><span>Маркет</span><span>🏪 '+esc(g.market)+'</span></div>';
-    if (tonRate&&g.price) html += '<div class="hist-row"><span>В рублях</span><span>≈'+fmt(Number(g.price)*tonRate)+'</span></div>';
-  }
+  html += '<div class="ton-panel" style="margin:12px 0">';
+  html += '<div class="ton-row"><span class="ton-lbl">Цена</span><span style="font-size:18px;font-weight:800;color:var(--ton)">'+fmtTon(g.price)+'</span></div>';
+  if (g.collection) html += '<div class="ton-row"><span class="ton-lbl">Коллекция</span><span style="font-weight:600;font-size:14px">'+esc(g.collection)+'</span></div>';
+  if (g.model)      html += '<div class="ton-row"><span class="ton-lbl">Модель</span><span style="font-weight:600;font-size:14px">'+esc(g.model)+'</span></div>';
+  if (g.background) html += '<div class="ton-row"><span class="ton-lbl">Фон</span><span style="font-weight:600;font-size:14px">'+esc(g.background)+'</span></div>';
+  if (g.date)       html += '<div class="ton-row"><span class="ton-lbl">Дата</span><span style="font-weight:600;font-size:14px">'+fmtDateShort(g.date)+'</span></div>';
+  if (g.market)     html += '<div class="ton-row"><span class="ton-lbl">Маркет</span><span style="font-weight:600;font-size:14px">'+esc(g.market)+'</span></div>';
+  if (tonRate&&g.price) html += '<div class="ton-row"><span class="ton-lbl">В рублях</span><span style="font-weight:600;font-size:14px">≈'+fmt(Number(g.price)*tonRate)+'</span></div>';
+  html += '</div>';
 
   html += '<div class="div"></div>';
   html += '<button class="btn-d" onclick="delGiftFromDet()">Удалить</button>';
