@@ -126,13 +126,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .sign-wrap{display:flex;gap:8px;align-items:flex-end;margin-bottom:13px}
 .sign-wrap .fg{flex:1;margin-bottom:0}
 .sign-toggle{display:flex;border:1.5px solid var(--sep);border-radius:10px;overflow:hidden;height:46px;flex-shrink:0}
-.sign-btn{width:38px;border:none;background:var(--bg2);color:var(--hint);font-size:20px;font-weight:700;cursor:pointer;transition:all .15s;padding:0}
+.sign-btn{width:38px;border:none;background:var(--bg2);color:var(--hint);font-size:20px;font-weight:700;cursor:pointer;transition:all .15s;padding:0;display:flex;align-items:center;justify-content:center;line-height:1}
 .sign-btn.active-add{background:rgba(36,129,204,.18);color:var(--btn)}
 .sign-btn.active-sub{background:rgba(231,76,60,.18);color:var(--red)}
 /* ── HIST ACCENT ROW ── */
 .hist-acc-row{display:flex;align-items:stretch;padding:9px 0;border-bottom:1px solid var(--sep)}
 .hist-acc-row:last-child{border-bottom:none}
 .hist-acc{width:3px;border-radius:3px;flex-shrink:0;margin-right:10px;align-self:stretch;min-height:28px}
+/* ── ICON PICKER ── */
+.icon-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:4px 0 12px}
+.icon-item{aspect-ratio:1;border-radius:12px;border:2.5px solid transparent;cursor:pointer;overflow:hidden;transition:border-color .15s}
+.icon-item.selected{border-color:var(--btn)}
+.icon-item img{width:100%;height:100%;object-fit:cover;display:block}
+/* ── DEADLINE INLINE ── */
+.dl-inline{text-align:center;padding:0 0 14px;cursor:pointer;user-select:none}
 /* ── SEARCH ── */
 .search-inp{width:100%;padding:10px 13px;border:1.5px solid var(--sep);border-radius:10px;font-size:15px;background:var(--bg);color:var(--text);outline:none;margin-bottom:8px}
 .search-inp:focus{border-color:var(--btn)}
@@ -258,12 +265,33 @@ let sortMode = null;
 let giftSearch = '';
 let _detHistOpen = false;
 let _workSign = 1;
+let _dlEditOpen = false;
+let _iconPickOpen = false;
+var ICONS = Array.from({length:12}, function(_,i){ return 'https://faserobbin-tech.github.io/freelance-miniapp/icons/Icon_'+(i+1)+'.png'; });
+
 function toggleDetHist() { _detHistOpen = !_detHistOpen; renderDet(); }
+function toggleDlEdit()  { _dlEditOpen  = !_dlEditOpen;  renderDet(); }
+function toggleIconPick(){ _iconPickOpen = !_iconPickOpen; renderDet(); }
 function setWorkSign(s) {
   _workSign = s;
   document.querySelectorAll('.sign-btn').forEach(function(btn, i) {
     btn.className = 'sign-btn' + (i===0 ? (s===1?' active-add':'') : (s===-1?' active-sub':''));
   });
+}
+function getDebtIcon(id) { var n=parseInt(localStorage.getItem('icon_'+id)||'0'); return (n>=1&&n<=12)?n:null; }
+function setDebtIcon(id,num) { localStorage.setItem('icon_'+id, String(num)); }
+function defaultIcon(company) {
+  var h=0, s=String(company||'');
+  for(var i=0;i<s.length;i++) h=s.charCodeAt(i)+((h<<5)-h);
+  return (Math.abs(h)%12)+1;
+}
+function getOrDefaultIcon(id,company) { return getDebtIcon(id) || defaultIcon(company); }
+function pickIcon(num) {
+  setDebtIcon(curDebt.id, num);
+  _iconPickOpen = false;
+  haptic('light');
+  renderDet();
+  renderDebts();
 }
 
 function clientColor(name) {
@@ -440,6 +468,13 @@ function fmtDateTime(d) {
       + ' · ' + dt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
   } catch(e) { return d; }
 }
+function fmtDateShort(d) {
+  if (!d) return '';
+  try {
+    var dt = new Date(d.length === 10 ? d + 'T12:00:00' : d);
+    return dt.toLocaleDateString('ru-RU',{day:'numeric',month:'short'}).replace(/\s*г\.$/,'');
+  } catch(e) { return d; }
+}
 function debtTotal(d) {
   return (d.history||[]).reduce(function(s,h){ return s+Number(h.amount||0); },0);
 }
@@ -488,21 +523,22 @@ function renderDebts() {
   orderedActive.forEach(function(d) {
     var tot = debtTotal(d);
     var dl  = d._deadline;
-    var clr = clientColor(d.company);
+    var icn = ICONS[getOrDefaultIcon(d.id, d.company)-1];
+    var avHtml = '<img src="'+icn+'" class="av" style="object-fit:cover;display:block">';
     if (isSortD) {
       html += '<div class="card" style="cursor:default">'
         + '<div class="sort-arrows">'
         + '<button class="sort-arrow" onclick="moveItem(\'debts\',\''+esc(d.id)+'\',-1)">↑</button>'
         + '<button class="sort-arrow" onclick="moveItem(\'debts\',\''+esc(d.id)+'\',1)">↓</button>'
         + '</div>'
-        + '<div class="av av-d" style="background:'+clr+'">'+esc(initials(d.company))+'</div>'
+        + avHtml
         + '<div class="cbody"><div class="ctitle">'+esc(d.company)+'</div>'
         + '<div class="csub">'+esc(d.project)+(d.manager?' · '+esc(d.manager):'')+'</div></div>'
         + '<div class="cright"><div class="camt red">'+fmt(tot)+'</div>'
         + deadlineBadge(dl)+'</div></div>';
     } else {
       html += '<div class="card" onclick="openDebtDet(\''+esc(d.id)+'\')">'
-        + '<div class="av av-d" style="background:'+clr+'">'+esc(initials(d.company))+'</div>'
+        + avHtml
         + '<div class="cbody"><div class="ctitle">'+esc(d.company)+'</div>'
         + '<div class="csub">'+esc(d.project)+(d.manager?' · '+esc(d.manager):'')+'</div></div>'
         + '<div class="cright"><div class="camt red">'+fmt(tot)+'</div>'
@@ -511,8 +547,9 @@ function renderDebts() {
   });
   closed.forEach(function(d) {
     var ds = daysSince(d.closedAt);
+    var icnC = ICONS[getOrDefaultIcon(d.id, d.company)-1];
     html += '<div class="card closed" onclick="openDebtDet(\''+esc(d.id)+'\')">'
-      + '<div class="av av-d">'+esc(initials(d.company))+'</div>'
+      + '<img src="'+icnC+'" class="av" style="object-fit:cover;display:block">'
       + '<div class="cbody"><div class="ctitle">'+esc(d.company)+'</div>'
       + '<div class="csub">'+esc(d.project)+'</div></div>'
       + '<div class="cright"><div class="camt">'+fmt(Number(d.amount||0))+'</div>'
@@ -553,7 +590,7 @@ function addDebt() {
 // ── DEBT DETAIL ───────────────────────────────────
 function openDebtDet(id) {
   haptic('light');
-  _detHistOpen = false; _workSign = 1;
+  _detHistOpen = false; _workSign = 1; _dlEditOpen = false; _iconPickOpen = false;
   curDebt = debts.find(function(d){ return d.id===id; });
   if (!curDebt) return;
   renderDet();
@@ -570,35 +607,66 @@ function renderDet() {
   var tot = debtTotal(d);
   var hist = (d.history||[]).filter(function(h){ return Number(h.amount||0) !== 0; });
   var dl = d._deadline || '';
+  var iconNum = getOrDefaultIcon(d.id, d.company);
 
-  // ── ЗАГОЛОВОК ──
+  // ── ЗАГОЛОВОК (иконка кликабельна → пикер) ──
   var html = '<div class="det-head">'
-    + '<div class="det-av" style="background:'+clientColor(d.company)+'">'+esc(initials(d.company))+'</div>'
+    + '<img src="'+ICONS[iconNum-1]+'" style="width:52px;height:52px;border-radius:14px;object-fit:cover;cursor:pointer;flex-shrink:0" onclick="toggleIconPick()">'
     + '<div class="det-info"><h4>'+esc(d.company)+'</h4><p>'+esc(d.project)+(d.manager?' · '+esc(d.manager):'')+'</p></div></div>';
 
-  // ── СУММА ДОЛГА — главный блок ──
-  html += '<div style="text-align:center;padding:4px 0 16px">'
+  // ── ПИКЕР ИКОНОК ──
+  if (_iconPickOpen) {
+    html += '<div class="icon-grid">';
+    for (var i = 1; i <= 12; i++) {
+      var sel = getOrDefaultIcon(d.id, d.company) === i;
+      html += '<div class="icon-item'+(sel?' selected':'')+'" onclick="pickIcon('+i+')">'
+        + '<img src="'+ICONS[i-1]+'" style="width:100%;height:100%;object-fit:cover;display:block">'
+        + '</div>';
+    }
+    html += '</div>';
+  }
+
+  // ── СУММА — главный блок ──
+  html += '<div style="text-align:center;padding:4px 0 10px">'
     + '<div style="font-size:11px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Доход</div>'
     + '<div style="font-size:36px;font-weight:700;color:var(--red);letter-spacing:-.5px">'+fmt(tot)+'</div>'
     + '</div>';
 
-  // ── ДЕДЛАЙН ──
-  html += '<div class="sect-hd">Дедлайн</div>';
-  html += '<div class="save-date-row">'
-    + '<div class="fg"><input id="det-close-dt" type="date" value="'+esc(dl)+'"></div>'
-    + '<button class="btn-save" onclick="saveDeadline()">Сохранить</button>'
-    + '</div>';
+  // ── ДЕДЛАЙН — строчка под суммой, кликабельная ──
+  if (dl) {
+    var ms = new Date(dl).getTime() - Date.now();
+    var days = Math.ceil(ms / 86400000);
+    var dlLabel = days > 0 ? 'через '+days+' дн.' : (days === 0 ? 'сегодня' : Math.abs(days)+' дн. просрочен');
+    var dlColor = days <= 0 ? 'var(--red)' : (days <= 7 ? '#e67e22' : 'var(--hint)');
+    html += '<div class="dl-inline" onclick="toggleDlEdit()">'
+      + '<span style="font-size:13px;color:'+dlColor+'">📅 '+fmtDateShort(dl)+'</span>'
+      + '<span style="font-size:12px;color:var(--hint)"> · '+dlLabel+'</span>'
+      + '</div>';
+  } else {
+    html += '<div class="dl-inline" onclick="toggleDlEdit()">'
+      + '<span style="font-size:13px;color:var(--hint)">+ Дедлайн</span>'
+      + '</div>';
+  }
+  if (_dlEditOpen) {
+    html += '<div class="save-date-row" style="margin-bottom:14px">'
+      + '<div class="fg"><input id="det-close-dt" type="date" value="'+esc(dl)+'"></div>'
+      + '<button class="btn-save" onclick="saveDeadline()">Сохранить</button>'
+      + '</div>';
+  }
 
   // ── ЗАПИСАТЬ РАБОТУ ──
   var today = new Date().toISOString().split('T')[0];
   html += '<div class="sect-hd">Записать работу</div>';
-  html += '<div class="fg"><label>Дата</label><input id="det-pay-dt" type="date" value="'+today+'"></div>';
+  // 1. Сумма + знак
   html += '<div class="sign-wrap">'
     + '<div class="fg"><label>Сумма (₽)</label><input id="det-pay-am" type="number" inputmode="numeric" placeholder="5000"></div>'
     + '<div class="sign-toggle">'
     + '<button class="sign-btn'+(_workSign===1?' active-add':'')+'" onclick="setWorkSign(1)">＋</button>'
     + '<button class="sign-btn'+(_workSign===-1?' active-sub':'')+'" onclick="setWorkSign(-1)">−</button>'
     + '</div></div>';
+  // 2. Дата (ниже суммы)
+  html += '<div class="fg"><label>Дата</label><input id="det-pay-dt" type="date" value="'+today+'"></div>';
+  // 3. Комментарий
   html += '<div class="fg"><label>Комментарий</label><input id="det-pay-cm" placeholder="Необязательно" autocomplete="off"></div>';
   html += '<button class="btn-p" id="det-pay-btn" onclick="addWork()">Записать</button>';
 
@@ -615,19 +683,25 @@ function renderDet() {
         var amColor = amNum < 0 ? 'var(--red)' : 'var(--btn)';
         var accColor = amNum < 0 ? '#e74c3c' : '#2481cc';
         var amStr = (amNum > 0 ? '+' : '') + fmt(h.amount);
+        // Дата работы vs дата записи
+        var mainDate, subDate;
+        if (h.recordedAt) {
+          mainDate = fmtDateShort(h.date);
+          subDate = 'записано · ' + fmtDateTime(h.recordedAt);
+        } else {
+          mainDate = fmtDateTime(h.date);
+          subDate = null;
+        }
         html += '<div class="hist-acc-row">'
           + '<div class="hist-acc" style="background:'+accColor+'"></div>'
           + '<div style="flex:1;min-width:0">'
-          + '<div style="font-size:13px;color:var(--text)">'+fmtDateTime(h.date)+'</div>'
+          + '<div style="font-size:13px;color:var(--text)">'+mainDate+'</div>'
+          + (subDate ? '<div style="font-size:10px;color:var(--hint);margin-top:1px">'+subDate+'</div>' : '')
           + (h.comment ? '<div style="font-size:11px;color:var(--hint);margin-top:2px">'+esc(h.comment)+'</div>' : '')
           + '</div>'
           + '<span style="font-weight:600;color:'+amColor+';white-space:nowrap;margin-left:10px;font-size:14px">'+amStr+'</span>'
           + '</div>';
       });
-      html += '<div class="hist-acc-row" style="background:var(--bg2);border-radius:8px;margin-top:4px;padding:9px 12px">'
-        + '<span style="font-weight:700;font-size:13px">Итого</span>'
-        + '<span style="font-weight:700;color:var(--btn);margin-left:auto">'+fmt(tot)+'</span>'
-        + '</div>';
     } else {
       html += '<div class="hist-empty">Записей ещё нет</div>';
     }
@@ -643,6 +717,7 @@ function saveDeadline() {
   var val = dt ? dt.value : '';
   setDeadline(curDebt.id, val || null);
   curDebt._deadline = val || null;
+  _dlEditOpen = false;
   haptic('light');
   notify('success');
   renderDet();
@@ -655,12 +730,22 @@ function addWork() {
   if (!am || Number(am) === 0) { if(tg) tg.showAlert('Введите сумму'); else alert('Введите сумму'); return; }
   var signedAm = String(Math.abs(Number(am)) * _workSign);
   var btn=document.getElementById('det-pay-btn'); btn.disabled=true;
-  var entryDate = dt ? (new Date(dt + 'T' + new Date().toTimeString().slice(0,8)).toISOString()) : new Date().toISOString();
-  fetch(API+'/freelance-api-history?id='+encodeURIComponent(curDebt.id)+'&amount='+encodeURIComponent(signedAm)+'&comment='+encodeURIComponent(cm)+'&date='+encodeURIComponent(entryDate))
+  var today = new Date().toISOString().split('T')[0];
+  var nowISO = new Date().toISOString();
+  var apiDate, localEntry;
+  if (dt && dt !== today) {
+    // Пользователь выбрал другую дату — это дата работы, записываем отдельно от времени записи
+    apiDate = dt;
+    localEntry = {amount:Number(signedAm), date:dt, recordedAt:nowISO, comment:cm};
+  } else {
+    apiDate = nowISO;
+    localEntry = {amount:Number(signedAm), date:nowISO, comment:cm};
+  }
+  fetch(API+'/freelance-api-history?id='+encodeURIComponent(curDebt.id)+'&amount='+encodeURIComponent(signedAm)+'&comment='+encodeURIComponent(cm)+'&date='+encodeURIComponent(apiDate))
     .then(function(r){return r.json();})
     .then(function(d){
       btn.disabled=false;
-      if(d.ok){ notify('success'); curDebt.history=curDebt.history||[]; curDebt.history.push({amount:Number(signedAm),date:entryDate,comment:cm}); renderDet(); loadDebts(); }
+      if(d.ok){ notify('success'); curDebt.history=curDebt.history||[]; curDebt.history.push(localEntry); renderDet(); loadDebts(); }
     }).catch(function(){ btn.disabled=false; });
 }
 function delDebt() {
