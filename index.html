@@ -223,6 +223,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <div class="fg"><label>Цена (TON)</label><input id="g-pr" type="number" step="0.01" inputmode="decimal" placeholder="12.5"></div>
     </div>
     <div class="fg"><label>Дата покупки</label><input id="g-dt" type="date"></div>
+    <div class="fg"><label>Маркет</label><input id="g-mk" list="dl-mk" placeholder="Fragment" autocomplete="off"><datalist id="dl-mk"></datalist></div>
     <div class="fg"><label>Фото (Ctrl+V)</label><div class="g-img-zone" id="g-img-zone">📋 Вставьте скриншот</div></div>
     <button class="btn-p" id="g-submit" onclick="addGift()">Добавить</button>
   </div>
@@ -374,6 +375,14 @@ function fmtDate(d) {
   if (!d) return '';
   try { return new Date(d).toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}); } catch(e) { return d; }
 }
+function fmtDateTime(d) {
+  if (!d) return '';
+  try {
+    var dt = new Date(d);
+    return dt.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'})
+      + ', ' + dt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  } catch(e) { return d; }
+}
 function debtTotal(d) {
   return (d.history||[]).reduce(function(s,h){ return s+Number(h.amount||0); },0);
 }
@@ -490,11 +499,11 @@ function openDebtDet(id) {
   if (!curDebt) return;
   renderDet();
   document.getElementById('ov-debt-det').classList.add('open');
-  if(tg) tg.BackButton.show(), tg.BackButton.onClick(closeDebtDet);
+  if(tg) { setupMainBtn('Закрыть', closeDebtDet); tg.BackButton.show(); tg.BackButton.onClick(closeDebtDet); }
 }
 function closeDebtDet() {
   document.getElementById('ov-debt-det').classList.remove('open');
-  if(tg) tg.BackButton.hide();
+  if(tg) { tg.BackButton.hide(); setupMainBtn('＋ Добавить', openDebtAdd); }
   curDebt=null;
 }
 function renderDet() {
@@ -514,13 +523,22 @@ function renderDet() {
     + '</div>';
 
   html += '<div class="div"></div>';
-  html += '<div class="fg"><label>Добавить (₽)</label><input id="det-pay-am" type="number" inputmode="numeric" placeholder="5000"></div>';
-  html += '<button class="btn-p" id="det-pay-btn" onclick="addWork()">Записать работу</button>';
+  var today = new Date().toISOString().split('T')[0];
+  html += '<div class="frow"><div class="fg"><label>Дата</label><input id="det-pay-dt" type="date" value="'+today+'"></div>'
+    + '<div class="fg" style="flex:2"><label>Сумма ₽ (− чтобы убрать)</label><input id="det-pay-am" type="number" inputmode="numeric" placeholder="5000 или -1000"></div></div>';
+  html += '<div class="fg"><label>Комментарий</label><input id="det-pay-cm" placeholder="Необязательно" autocomplete="off"></div>';
+  html += '<button class="btn-p" id="det-pay-btn" onclick="addWork()">Записать</button>';
 
   html += '<div class="hist-hd">История работы</div>';
   if (hist.length) {
     hist.slice().reverse().forEach(function(h){
-      html += '<div class="hist-row"><span>'+fmtDate(h.date)+'</span><span style="font-weight:600;color:var(--btn)">+'+fmt(h.amount)+'</span></div>';
+      var amNum = Number(h.amount||0);
+      var amColor = amNum < 0 ? 'var(--red)' : 'var(--btn)';
+      var amStr = (amNum > 0 ? '+' : '') + fmt(h.amount);
+      html += '<div class="hist-row" style="align-items:flex-start"><div>'
+        + '<div>'+fmtDateTime(h.date)+'</div>'
+        + (h.comment ? '<div style="font-size:11px;color:var(--hint);margin-top:2px">'+esc(h.comment)+'</div>' : '')
+        + '</div><span style="font-weight:600;color:'+amColor+';white-space:nowrap;margin-left:8px">'+amStr+'</span></div>';
     });
     html += '<div class="hist-row"><span style="font-weight:600">Итого</span><span style="font-weight:700;color:var(--btn)">'+fmt(tot)+'</span></div>';
   } else {
@@ -544,13 +562,16 @@ function saveDeadline() {
 }
 function addWork() {
   var am = document.getElementById('det-pay-am').value.trim();
-  if (!am||Number(am)<=0) { if(tg) tg.showAlert('Введите сумму'); else alert('Введите сумму'); return; }
+  var cm = document.getElementById('det-pay-cm').value.trim();
+  var dt = document.getElementById('det-pay-dt').value;
+  if (!am || Number(am) === 0) { if(tg) tg.showAlert('Введите сумму'); else alert('Введите сумму'); return; }
   var btn=document.getElementById('det-pay-btn'); btn.disabled=true;
-  fetch(API+'/freelance-api-history?id='+encodeURIComponent(curDebt.id)+'&amount='+encodeURIComponent(am))
+  var entryDate = dt ? (new Date(dt + 'T' + new Date().toTimeString().slice(0,8)).toISOString()) : new Date().toISOString();
+  fetch(API+'/freelance-api-history?id='+encodeURIComponent(curDebt.id)+'&amount='+encodeURIComponent(am)+'&comment='+encodeURIComponent(cm)+'&date='+encodeURIComponent(entryDate))
     .then(function(r){return r.json();})
     .then(function(d){
       btn.disabled=false;
-      if(d.ok){ notify('success'); curDebt.history=curDebt.history||[]; curDebt.history.push({amount:Number(am),date:new Date().toISOString()}); renderDet(); loadDebts(); }
+      if(d.ok){ notify('success'); curDebt.history=curDebt.history||[]; curDebt.history.push({amount:Number(am),date:entryDate,comment:cm}); renderDet(); loadDebts(); }
     }).catch(function(){ btn.disabled=false; });
 }
 function delDebt() {
@@ -594,7 +615,8 @@ function renderGifts() {
   var html = '<div class="sort-bar"><button class="sort-toggle-btn'+(isSortG?' active':'')+'" onclick="toggleSort(\'gifts\')">'+(isSortG?'✓ Готово':'⇅ Порядок')+'</button></div>';
   orderedGifts.forEach(function(g) {
     var title = esc(g.collection)+(g.model?' · '+esc(g.model):'');
-    var sub   = g.background ? '🎨 '+esc(g.background) : esc(g.date||'');
+    var subParts = []; if(g.background) subParts.push('🎨 '+esc(g.background)); if(g.market) subParts.push('🏪 '+esc(g.market)); if(!subParts.length) subParts.push(esc(g.date||''));
+    var sub = subParts.join(' · ');
     var rubBdg = (tonRate&&g.price) ? ' <span class="bdg bdg-days">≈'+fmt(Number(g.price)*tonRate)+'</span>' : '';
     var gImg = g.id ? localStorage.getItem('gimg_'+g.id) : null;
     var avHtml = gImg
@@ -625,10 +647,10 @@ function renderGifts() {
 // ── ADD GIFT ──────────────────────────────────────
 function openGiftAdd() {
   haptic('light');
-  ['g-col','g-mod','g-bg','g-pr'].forEach(function(id){ document.getElementById(id).value=''; });
+  ['g-col','g-mod','g-bg','g-pr','g-mk'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('g-dt').value = new Date().toISOString().split('T')[0];
   _giftImgData = null;
-  updateDL('dl-col','col'); updateDL('dl-mod','mod'); updateDL('dl-bg','bg');
+  updateDL('dl-col','col'); updateDL('dl-mod','mod'); updateDL('dl-bg','bg'); updateDL('dl-mk','mk');
   var zone = document.getElementById('g-img-zone');
   if (zone) { zone.style.backgroundImage=''; zone.textContent='📋 Вставьте скриншот'; zone.classList.remove('has-img'); }
   document.getElementById('ov-gift-add').classList.add('open');
@@ -645,15 +667,16 @@ function addGift() {
   var bg=document.getElementById('g-bg').value.trim();
   var pr=document.getElementById('g-pr').value.trim();
   var dt=document.getElementById('g-dt').value;
+  var mk=document.getElementById('g-mk').value.trim();
   if (!col) { if(tg) tg.showAlert('Укажите коллекцию'); else alert('Укажите коллекцию'); return; }
   var btn=document.getElementById('g-submit'); btn.disabled=true;
-  fetch(API+'/freelance-gifts-add?person=&collection='+encodeURIComponent(col)+'&model='+encodeURIComponent(mod)+'&background='+encodeURIComponent(bg)+'&price='+encodeURIComponent(pr)+'&date='+encodeURIComponent(dt)+'&gift='+encodeURIComponent(col+(mod?' '+mod:'')))
+  fetch(API+'/freelance-gifts-add?person=&collection='+encodeURIComponent(col)+'&model='+encodeURIComponent(mod)+'&background='+encodeURIComponent(bg)+'&price='+encodeURIComponent(pr)+'&date='+encodeURIComponent(dt)+'&market='+encodeURIComponent(mk)+'&gift='+encodeURIComponent(col+(mod?' '+mod:'')))
     .then(function(r){return r.json();})
     .then(function(d){
       btn.disabled=false;
       if(d.ok){
         notify('success');
-        addAC('col',col); addAC('mod',mod); addAC('bg',bg);
+        addAC('col',col); addAC('mod',mod); addAC('bg',bg); addAC('mk',mk);
         if(_giftImgData) {
           if (d.id) {
             try { localStorage.setItem('gimg_'+d.id, _giftImgData); } catch(e){}
@@ -672,11 +695,11 @@ function openGiftDet(id) {
   if (!curGift) return;
   renderGiftDet();
   document.getElementById('ov-gift-det').classList.add('open');
-  if(tg) tg.BackButton.show(), tg.BackButton.onClick(closeGiftDet);
+  if(tg) { setupMainBtn('Закрыть', closeGiftDet); tg.BackButton.show(); tg.BackButton.onClick(closeGiftDet); }
 }
 function closeGiftDet() {
   document.getElementById('ov-gift-det').classList.remove('open');
-  if(tg) tg.BackButton.hide();
+  if(tg) { tg.BackButton.hide(); setupMainBtn('＋ Добавить', openGiftAdd); }
   curGift = null;
 }
 function renderGiftDet() {
@@ -701,6 +724,7 @@ function renderGiftDet() {
     if (g.model)      html += '<div class="hist-row"><span>Модель</span><span>'+esc(g.model)+'</span></div>';
     if (g.background) html += '<div class="hist-row"><span>Фон</span><span>'+esc(g.background)+'</span></div>';
     if (g.date)       html += '<div class="hist-row"><span>Дата</span><span>'+esc(g.date)+'</span></div>';
+    if (g.market)     html += '<div class="hist-row"><span>Маркет</span><span>🏪 '+esc(g.market)+'</span></div>';
     if (tonRate&&g.price) html += '<div class="hist-row"><span>В рублях</span><span>≈'+fmt(Number(g.price)*tonRate)+'</span></div>';
   }
 
