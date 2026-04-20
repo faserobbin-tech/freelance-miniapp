@@ -215,7 +215,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div class="fin-nw-lbl">Net Worth</div>
     <div class="fin-nw-total" id="fin-total">—</div>
     <div class="fin-acc-row">
-      <div style="flex:1"><div class="fin-acc-lbl">🏦 Сбер</div></div>
+      <div style="flex:1"><div class="fin-acc-lbl">🏦 Сберегательный</div></div>
       <input class="ton-inp" id="fin-sber" type="text" placeholder="0" inputmode="decimal">
     </div>
     <div class="fin-acc-row">
@@ -233,6 +233,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div class="fin-acc-row">
       <div style="flex:1"><div class="fin-acc-lbl">💸 Выплатят по фрилансу</div><div class="fin-acc-sub">из первой вкладки</div></div>
       <span class="ton-val" id="fin-debts-rub">—</span>
+    </div>
+    <div class="fin-acc-row">
+      <div style="flex:1"><div class="fin-acc-lbl" style="color:var(--hint)">🛡️ Резерв</div><div class="fin-acc-sub">не учитывается в Net Worth</div></div>
+      <input class="ton-inp" id="fin-reserv" type="text" placeholder="0" inputmode="decimal" style="color:var(--hint)">
     </div>
   </div>
   <!-- Runway -->
@@ -278,13 +282,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div class="mood-scale" id="mood-scale"></div>
     <div class="fg" style="margin-bottom:10px">
       <label>Планы на сегодня</label>
-      <textarea id="mood-plans" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--sep);border-radius:10px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit" placeholder="Что хочу сделать..."></textarea>
+      <textarea id="mood-plans" rows="3" style="width:100%;padding:10px 12px;border:1.5px solid var(--sep);border-radius:10px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit" placeholder="Что хочу сделать..."></textarea>
     </div>
     <div class="fg" style="margin-bottom:2px">
       <label>Итог дня</label>
-      <textarea id="mood-result" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--sep);border-radius:10px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit" placeholder="Что удалось..."></textarea>
+      <textarea id="mood-result" rows="3" style="width:100%;padding:10px 12px;border:1.5px solid var(--sep);border-radius:10px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit" placeholder="Что удалось..."></textarea>
     </div>
     <button class="btn-p" id="mood-save-btn" onclick="saveTodayMood()">Сохранить</button>
+    <div id="mood-saved-lbl" style="text-align:center;font-size:12px;color:var(--hint);margin-top:8px;min-height:16px"></div>
   </div>
   <div id="mood-hist-section"></div>
 </div>
@@ -1147,15 +1152,17 @@ function loadFinData() {
   if ((el=document.getElementById('fin-sber')))   el.value = localStorage.getItem('fin_sber') || '';
   if ((el=document.getElementById('fin-invest'))) el.value = localStorage.getItem('fin_invest') || '';
   if ((el=document.getElementById('fin-cash')))   el.value = localStorage.getItem('fin_cash') || '';
+  if ((el=document.getElementById('fin-reserv'))) el.value = localStorage.getItem('fin_reserv') || '';
   renderFinance();
 }
 function renderFinance() {
   var sber   = parseFloat((document.getElementById('fin-sber')||{}).value||'0') || 0;
   var invest = parseFloat((document.getElementById('fin-invest')||{}).value||'0') || 0;
   var cash   = parseFloat((document.getElementById('fin-cash')||{}).value||'0') || 0;
+  var reserv = parseFloat((document.getElementById('fin-reserv')||{}).value||'0') || 0;
   var tonRub   = _finTonRub || 0;
   var debtsRub = _finDebtsRub || 0;
-  var total = sber + invest + cash + tonRub + debtsRub;
+  var total = sber + invest + cash + tonRub + debtsRub - reserv;
   var el;
   if ((el=document.getElementById('fin-total')))     el.textContent = fmt(total);
   if ((el=document.getElementById('fin-ton-rub')))   el.textContent = tonRub   ? fmt(tonRub)   : '—';
@@ -1187,7 +1194,8 @@ function saveFinSnapshot() {
   var sber   = parseFloat((document.getElementById('fin-sber')||{}).value||'0') || 0;
   var invest = parseFloat((document.getElementById('fin-invest')||{}).value||'0') || 0;
   var cash   = parseFloat((document.getElementById('fin-cash')||{}).value||'0') || 0;
-  var total  = sber + invest + cash + _finTonRub + _finDebtsRub;
+  var reserv = parseFloat((document.getElementById('fin-reserv')||{}).value||'0') || 0;
+  var total  = sber + invest + cash + _finTonRub + _finDebtsRub - reserv;
   var today  = new Date().toISOString().split('T')[0];
   var snaps  = JSON.parse(localStorage.getItem('fin_snapshots')||'[]');
   var idx    = snaps.findIndex(function(s){ return s.ts === today; });
@@ -1250,25 +1258,68 @@ document.getElementById('ton-bal').value = localStorage.getItem('ton_bal') || ''
 var _finKeys = {
   'fin-sber':   'fin_sber',
   'fin-invest': 'fin_invest',
-  'fin-cash':   'fin_cash'
+  'fin-cash':   'fin_cash',
+  'fin-reserv': 'fin_reserv'
 };
 Object.keys(_finKeys).forEach(function(id) {
   var key = _finKeys[id];
   var el = document.getElementById(id);
   if (!el) return;
   el.value = localStorage.getItem(key) || '';
-  el.addEventListener('input', function() {
-    if (/^[\d\.\s]*$/.test(this.value)) renderFinance();
-  });
+  el.addEventListener('input', function() { renderFinance(); });
   el.addEventListener('blur', function() {
     localStorage.setItem(key, this.value);
     saveFinSnapshot();
     renderFinance();
   });
   el.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      var val = this.value.trim();
+      if (/^[\d\s\+\-\*\/\.\(\)]+$/.test(val)) {
+        try {
+          var res = Function('return (' + val + ')')();
+          if (typeof res === 'number' && isFinite(res)) {
+            this.value = parseFloat(res.toFixed(2));
+            haptic('light');
+          }
+        } catch(e2) {}
+      }
+      this.blur();
+    }
   });
 });
+
+// ── MOOD TEXTAREA BULLET POINTS ──
+function initBulletTextarea(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('focus', function() {
+    if (!this.value) { this.value = '• '; this.selectionStart = this.selectionEnd = this.value.length; }
+  });
+  el.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      var start = this.selectionStart, end = this.selectionEnd;
+      var val = this.value;
+      if (e.shiftKey) {
+        // Shift+Enter = new bullet point
+        var insert = '\n• ';
+        this.value = val.slice(0,start) + insert + val.slice(end);
+        this.selectionStart = this.selectionEnd = start + insert.length;
+      } else {
+        // Enter = plain newline (no bullet)
+        this.value = val.slice(0,start) + '\n' + val.slice(end);
+        this.selectionStart = this.selectionEnd = start + 1;
+      }
+    }
+  });
+}
+// Attach after DOM ready
+setTimeout(function() {
+  initBulletTextarea('mood-plans');
+  initBulletTextarea('mood-result');
+}, 100);
 
 // ── MOOD ──────────────────────────────────────────
 function renderMood() {
@@ -1301,6 +1352,9 @@ function renderMood() {
     if (pl && !pl._touched) pl.value = todayEntry.plans||'';
     if (re && !re._touched) re.value = todayEntry.result||'';
     if (!_todayMood && todayEntry.mood) _todayMood = todayEntry.mood;
+    // Show "already saved" hint
+    var lbl = document.getElementById('mood-saved-lbl');
+    if (lbl && !lbl.textContent) lbl.textContent = 'Запись на сегодня уже есть';
   }
 
   // History
@@ -1349,6 +1403,12 @@ function saveTodayMood() {
   var re = document.getElementById('mood-result');
   if (pl) pl._touched = true;
   if (re) re._touched = true;
+  // Visual feedback
+  var btn = document.getElementById('mood-save-btn');
+  var lbl = document.getElementById('mood-saved-lbl');
+  if (btn) { btn.textContent = '✓ Сохранено'; btn.disabled = true; setTimeout(function(){ btn.textContent='Сохранить'; btn.disabled=false; }, 2000); }
+  var now = new Date();
+  if (lbl) lbl.textContent = 'Сохранено в '+now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
   renderMood();
 }
 
