@@ -1362,7 +1362,12 @@ function renderMood() {
   if (!histEl) return;
   var past = entries.filter(function(e){ return e.date!==today; })
     .sort(function(a,b){ return b.date.localeCompare(a.date); });
-  if (!past.length) { histEl.innerHTML = ''; return; }
+  if (!past.length) {
+    histEl.innerHTML = entries.length
+      ? '<div style="text-align:center;padding:16px 0 4px;font-size:13px;color:var(--hint)">История появится со следующего дня</div>'
+      : '';
+    return;
+  }
   var hh = '<div class="sect-hd" style="border-top:none;padding-top:0;margin-top:4px">История</div>';
   past.slice(0,10).forEach(function(e) {
     var d2 = new Date(e.date+'T12:00:00');
