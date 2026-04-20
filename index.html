@@ -25,7 +25,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .tabs{display:flex;background:var(--bg);position:sticky;top:0;z-index:100;padding:8px 10px;gap:6px;box-shadow:0 1px 0 var(--sep)}
 .tab{flex:1;padding:9px 0 8px;text-align:center;font-size:11px;color:var(--hint);cursor:pointer;border-radius:11px;border-bottom:none;transition:all .18s;user-select:none;font-weight:500}
 .tab.active{background:var(--btn);color:var(--btnt);font-weight:700}
-.tab i{font-size:20px;display:block;margin-bottom:2px;font-style:normal}
+.tab i{font-size:18px;display:block;margin-bottom:2px;font-style:normal;line-height:1;width:24px;height:24px;display:flex;align-items:center;justify-content:center;margin:0 auto 2px}
 
 /* ── PAGE ── */
 .page{display:none;padding:14px}
@@ -34,7 +34,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 /* ── SUMMARY ── */
 .summary{background:var(--btn);background-image:linear-gradient(145deg,rgba(255,255,255,.12) 0%,rgba(0,0,0,.18) 100%);color:var(--btnt);border-radius:20px;padding:20px 22px 22px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 20px rgba(0,0,0,.18)}
 .sum-left .amount{font-size:38px;font-weight:800;letter-spacing:-.5px;line-height:1.05}
-.sum-left .label{font-size:12px;opacity:.75;margin-top:5px;letter-spacing:.1px}
+.sum-left .label{font-size:10px;opacity:.85;margin-top:5px;letter-spacing:.5px;font-weight:700;text-transform:uppercase}
 .sum-badge{background:rgba(255,255,255,.18);border-radius:16px;padding:8px 16px;font-size:18px;font-weight:800;min-width:44px;text-align:center;align-self:flex-start}
 
 /* ── CARD ── */
@@ -74,8 +74,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .fin-runway{background:var(--bg);border-radius:14px;padding:13px 16px;margin-bottom:10px;box-shadow:0 1px 8px rgba(0,0,0,.06)}
 /* ── MOOD ── */
 .mood-today{background:var(--bg);border-radius:18px;padding:16px 18px;margin-bottom:10px;box-shadow:0 2px 14px rgba(0,0,0,.08)}
-.mood-scale{display:flex;gap:4px;margin:8px 0 12px}
-.mood-btn{flex:1;aspect-ratio:1;border:1.5px solid var(--sep);border-radius:8px;background:var(--bg2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--hint);transition:all .12s;display:flex;align-items:center;justify-content:center;padding:0}
+.mood-scale{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin:8px 0 12px}
+.mood-btn{aspect-ratio:1;border:1.5px solid var(--sep);border-radius:10px;background:var(--bg2);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--hint);transition:all .12s;display:flex;align-items:center;justify-content:center;padding:0;width:100%}
 .mood-btn.sel{background:var(--btn);color:var(--btnt);border-color:var(--btn)}
 .mood-hist-card{background:var(--bg);border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 8px rgba(0,0,0,.06)}
 
@@ -181,6 +181,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 /* ── GIFT IMAGE ZONE ── */
 .g-img-zone{border:1.5px dashed var(--sep);border-radius:10px;height:90px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--hint);margin-bottom:13px;background-size:cover;background-position:center;background-repeat:no-repeat;cursor:pointer;overflow:hidden;transition:border-color .2s}
 .g-img-zone.has-img{border-color:var(--btn)}
+/* ── MODAL CLOSE X ── */
+.modal-hd{display:flex;align-items:center;justify-content:center;position:relative;padding:14px 0 20px}
+.modal-hd .handle{margin:0;position:absolute;left:50%;transform:translateX(-50%)}
+.x-btn{position:absolute;right:0;top:50%;transform:translateY(-50%);width:32px;height:32px;border:none;background:var(--bg2);border-radius:50%;font-size:16px;color:var(--hint);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+/* ── TON ACCORDION ── */
+.ton-acc-hd{display:flex;justify-content:space-between;align-items:center;padding:13px 0;cursor:pointer;user-select:none}
+.ton-acc-hd span{font-size:13px;font-weight:600;color:var(--hint)}
+/* ── ARCHIVED SECTION ── */
+.arch-hd{font-size:11px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.5px;padding:14px 0 8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
 /* ── LOCKED SCREEN ── */
 .locked{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center;color:var(--hint)}
 .locked i{font-size:64px;display:block;margin-bottom:20px}
@@ -250,26 +259,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <span style="font-size:13px;font-weight:600;color:var(--hint)" id="fin-avg-exp">—</span>
     </div>
   </div>
-  <div class="ton-panel" id="ton-panel">
-    <div class="ton-row">
-      <span class="ton-lbl">Мой баланс TON</span>
-      <input class="ton-inp" id="ton-bal" type="text" placeholder="0.00" inputmode="decimal">
+  <div class="ton-panel" id="ton-panel-wrap">
+    <div class="ton-acc-hd" onclick="toggleTonPanel()">
+      <span>💎 TON детали</span>
+      <span id="ton-acc-arrow">▼</span>
     </div>
-    <div class="ton-row">
-      <span class="ton-lbl">Куплено подарков</span>
-      <span class="ton-val blue" id="ton-gifts-total">—</span>
-    </div>
-    <div class="ton-row">
-      <span class="ton-lbl">Портфель в TON</span>
-      <span class="ton-val blue" id="ton-portfolio-ton">—</span>
-    </div>
-    <div class="ton-row">
-      <span class="ton-lbl">Курс TON<span class="ton-rate-age" id="ton-age"></span></span>
-      <span class="ton-val" id="ton-rate-val">—</span>
-    </div>
-    <div class="ton-row">
-      <span class="ton-lbl">Портфель в ₽</span>
-      <span class="ton-val hero" id="ton-portfolio">—</span>
+    <div id="ton-panel-body" style="display:none">
+      <div class="ton-row">
+        <span class="ton-lbl">Мой баланс TON</span>
+        <input class="ton-inp" id="ton-bal" type="text" placeholder="0.00" inputmode="decimal">
+      </div>
+      <div class="ton-row">
+        <span class="ton-lbl">Куплено подарков</span>
+        <span class="ton-val blue" id="ton-gifts-total">—</span>
+      </div>
+      <div class="ton-row">
+        <span class="ton-lbl">Портфель в TON</span>
+        <span class="ton-val blue" id="ton-portfolio-ton">—</span>
+      </div>
+      <div class="ton-row">
+        <span class="ton-lbl">Курс TON<span class="ton-rate-age" id="ton-age"></span></span>
+        <span class="ton-val" id="ton-rate-val">—</span>
+      </div>
+      <div class="ton-row">
+        <span class="ton-lbl">Портфель в ₽</span>
+        <span class="ton-val hero" id="ton-portfolio">—</span>
+      </div>
     </div>
   </div>
 </div>
@@ -309,7 +324,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <!-- ── MODAL: DEBT DETAIL ── -->
 <div class="ov" id="ov-debt-det" onclick="bgClose(event,'ov-debt-det')">
   <div class="modal">
-    <div class="handle"></div>
+    <div class="modal-hd"><div class="handle"></div><button class="x-btn" onclick="closeDebtDet()">✕</button></div>
     <div id="det-content"></div>
   </div>
 </div>
@@ -317,7 +332,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <!-- ── MODAL: GIFT DETAIL ── -->
 <div class="ov" id="ov-gift-det" onclick="bgClose(event,'ov-gift-det')">
   <div class="modal">
-    <div class="handle"></div>
+    <div class="modal-hd"><div class="handle"></div><button class="x-btn" onclick="closeGiftDet()">✕</button></div>
     <div id="gift-det-content"></div>
   </div>
 </div>
@@ -362,8 +377,12 @@ let _editHistIdx = -1; // original history index being date-edited
 // ── FINANCE ──
 let _finTonRub = 0;
 let _finDebtsRub = 0;
+// ── TON ──
+let _tonPanelOpen = false;
 // ── MOOD ──
 let _todayMood = 0;
+let _editMoodDate = null; // date string of past entry being edited
+let _editMoodTmp = null;  // mood value being set in edit mode
 var ICONS = Array.from({length:12}, function(_,i){ return 'https://faserobbin-tech.github.io/freelance-miniapp/icons/Icon_'+(i+1)+'.png'; });
 
 function toggleDetHist() { _detHistOpen = !_detHistOpen; renderDet(); }
@@ -647,9 +666,11 @@ function loadDebts() {
   });
 }
 
+function isArchived(d) { return !!d.closedAt || !!localStorage.getItem('arc_'+d.id); }
+let _archSectionOpen = false;
 function renderDebts() {
-  var active = debts.filter(function(d){ return !d.closedAt; });
-  var closed = debts.filter(function(d){ return d.closedAt; });
+  var active = debts.filter(function(d){ return !isArchived(d); });
+  var closed = debts.filter(function(d){ return isArchived(d); });
   var total  = active.reduce(function(s,d){ return s+debtTotal(d); },0);
   // Update finance auto value
   _finDebtsRub = active.reduce(function(s,d){ return s+Math.max(0,debtTotal(d)); },0);
@@ -657,7 +678,7 @@ function renderDebts() {
 
   var sum = document.getElementById('debts-summary');
   if (debts.length) {
-    sum.innerHTML = '<div class="summary"><div class="sum-left"><div class="amount">'+fmt(total)+'</div><div class="label">Доходы</div></div><div class="sum-badge">'+active.length+'</div></div>';
+    sum.innerHTML = '<div class="summary"><div class="sum-left"><div class="amount">'+fmt(total)+'</div><div class="label">к получению</div></div><div class="sum-badge">'+active.length+'</div></div>';
   } else { sum.innerHTML = ''; }
 
   var isSortD = sortMode === 'debts';
@@ -689,18 +710,26 @@ function renderDebts() {
         + '<span class="card-chev">›</span></div>';
     }
   });
-  closed.forEach(function(d) {
-    var ds = daysSince(d.closedAt);
-    var icnC = ICONS[getOrDefaultIcon(d.id, d.company)-1];
-    html += '<div class="card closed" onclick="openDebtDet(\''+esc(d.id)+'\')">'
-      + '<img src="'+icnC+'" class="av" style="object-fit:cover;display:block">'
-      + '<div class="cbody"><div class="ctitle">'+esc(d.company)+'</div>'
-      + '<div class="csub">'+esc(d.project)+'</div></div>'
-      + '<div class="cright"><div class="camt">'+fmt(Number(d.amount||0))+'</div>'
-      + '<div class="bdg bdg-done">закрыт'+( ds?' '+ds:'')+'</div>'
-      + '</div></div>';
-  });
-  if (!html) html = '<div class="empty"><i>📭</i><b>Долгов нет</b><span>Нажмите + чтобы добавить</span></div>';
+  if (closed.length) {
+    html += '<div class="arch-hd" onclick="_archSectionOpen=!_archSectionOpen;renderDebts()">'
+      + '<span>Завершённые</span>'
+      + '<span>'+closed.length+' '+(_archSectionOpen?'▲':'▼')+'</span></div>';
+    if (_archSectionOpen) {
+      closed.forEach(function(d) {
+        var arcTs = localStorage.getItem('arc_'+d.id) || d.closedAt || '';
+        var ds = arcTs ? daysSince(arcTs) : '';
+        var icnC = ICONS[getOrDefaultIcon(d.id, d.company)-1];
+        html += '<div class="card closed" onclick="openDebtDet(\''+esc(d.id)+'\')">'
+          + '<img src="'+icnC+'" class="av" style="object-fit:cover;display:block">'
+          + '<div class="cbody"><div class="ctitle">'+esc(d.company)+'</div>'
+          + '<div class="csub">'+esc(d.project)+'</div></div>'
+          + '<div class="cright"><div class="camt">'+fmt(debtTotal(d))+'</div>'
+          + '<div class="bdg bdg-done">оплачено'+(ds?' '+ds:'')+'</div>'
+          + '</div></div>';
+      });
+    }
+  }
+  if (!orderedActive.length && !closed.length) html = '<div class="empty"><i>📭</i><b>Долгов нет</b><span>Нажмите + чтобы добавить</span></div>';
   document.getElementById('debts-list').innerHTML = html;
 }
 
@@ -740,7 +769,7 @@ function openDebtDet(id) {
   if (!curDebt) return;
   renderDet();
   document.getElementById('ov-debt-det').classList.add('open');
-  if(tg) { setupMainBtn('Закрыть', closeDebtDet); tg.BackButton.show(); tg.BackButton.onClick(closeDebtDet); }
+  if(tg) { tg.MainButton.hide(); tg.BackButton.show(); tg.BackButton.onClick(closeDebtDet); }
 }
 function closeDebtDet() {
   document.getElementById('ov-debt-det').classList.remove('open');
@@ -835,7 +864,7 @@ function renderDet() {
   }
   // 4. Комментарий
   html += '<div class="fg"><label>Комментарий</label><input id="det-pay-cm" placeholder="Необязательно" autocomplete="off"></div>';
-  html += '<button class="btn-p" id="det-pay-btn" onclick="addWork()">Записать</button>';
+  html += '<button class="btn-p" id="det-pay-btn" onclick="addWork()">Сохранить</button>';
 
   // ── ИСТОРИЯ (коллапсируемая) ──
   var histCount = hist.length;
@@ -908,6 +937,9 @@ function renderDet() {
   }
 
   html += '<div class="div"></div>';
+  if (!localStorage.getItem('arc_'+d.id)) {
+    html += '<button class="btn-o" style="margin-bottom:6px" onclick="archiveDebt()">Отметить оплаченным</button>';
+  }
   html += '<button class="btn-d" onclick="delDebt()">Удалить</button>';
 
   document.getElementById('det-content').innerHTML = html;
@@ -967,6 +999,22 @@ function delDebt() {
   }
   if(tg) tg.showConfirm('Удалить долг «'+curDebt.company+'»?', function(ok){ if(ok) go(); });
   else if(confirm('Удалить?')) go();
+}
+function archiveDebt() {
+  if (!curDebt) return;
+  localStorage.setItem('arc_'+curDebt.id, new Date().toISOString().split('T')[0]);
+  haptic('light');
+  notify('success');
+  closeDebtDet();
+  renderDebts();
+}
+function toggleTonPanel() {
+  _tonPanelOpen = !_tonPanelOpen;
+  var body = document.getElementById('ton-panel-body');
+  var arrow = document.getElementById('ton-acc-arrow');
+  if (body) body.style.display = _tonPanelOpen ? 'block' : 'none';
+  if (arrow) arrow.textContent = _tonPanelOpen ? '▲' : '▼';
+  haptic('light');
 }
 
 // ── GIFTS ─────────────────────────────────────────
@@ -1090,7 +1138,7 @@ function openGiftDet(id) {
   if (!curGift) return;
   renderGiftDet();
   document.getElementById('ov-gift-det').classList.add('open');
-  if(tg) { setupMainBtn('Закрыть', closeGiftDet); tg.BackButton.show(); tg.BackButton.onClick(closeGiftDet); }
+  if(tg) { tg.MainButton.hide(); tg.BackButton.show(); tg.BackButton.onClick(closeGiftDet); }
 }
 function closeGiftDet() {
   document.getElementById('ov-gift-det').classList.remove('open');
@@ -1373,14 +1421,36 @@ function renderMood() {
     var d2 = new Date(e.date+'T12:00:00');
     var lbl = d2.toLocaleDateString('ru-RU',{day:'numeric',month:'long'}).replace(' г.','');
     var mc = e.mood<=3?'var(--red)':e.mood<=6?'#f39c12':'#27ae60';
-    hh += '<div class="mood-hist-card">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center'+(e.plans||e.result?';margin-bottom:8px':'')+'">'
-      + '<span style="font-size:13px;color:var(--hint)">'+lbl+'</span>'
-      + (e.mood?'<span style="font-size:22px;font-weight:800;color:'+mc+'">'+e.mood+'</span>':'')
-      + '</div>'
-      + (e.plans?'<div style="font-size:13px;color:var(--hint);margin-bottom:4px">📋 '+esc(e.plans)+'</div>':'')
-      + (e.result?'<div style="font-size:13px;color:var(--text)">✅ '+esc(e.result)+'</div>':'')
-      + '</div>';
+    if (_editMoodDate === e.date) {
+      // Inline edit mode for this entry
+      var editMoodVal = _editMoodTmp !== null ? _editMoodTmp : (e.mood||0);
+      var scaleBtns = '';
+      for (var ii=1; ii<=10; ii++) {
+        scaleBtns += '<button class="mood-btn'+(editMoodVal===ii?' sel':'')+'" onclick="setEditMood('+ii+',\''+e.date+'\')" style="font-size:13px">'+ii+'</button>';
+      }
+      hh += '<div class="mood-hist-card">'
+        + '<div style="font-size:12px;font-weight:700;color:var(--hint);margin-bottom:8px">'+lbl+'</div>'
+        + '<div class="mood-scale" style="margin-bottom:10px">'+scaleBtns+'</div>'
+        + '<div class="fg" style="margin-bottom:8px"><label>Планы</label>'
+        + '<textarea id="medit-plans" rows="2" style="width:100%;padding:8px 10px;border:1.5px solid var(--sep);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit">'+esc(e.plans||'')+'</textarea></div>'
+        + '<div class="fg" style="margin-bottom:10px"><label>Итог</label>'
+        + '<textarea id="medit-result" rows="2" style="width:100%;padding:8px 10px;border:1.5px solid var(--sep);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit">'+esc(e.result||'')+'</textarea></div>'
+        + '<div style="display:flex;gap:8px">'
+        + '<button class="btn-p" style="margin-top:0;padding:10px;font-size:13px;flex:1" onclick="saveMoodEditEntry(\''+e.date+'\')">Сохранить</button>'
+        + '<button class="btn-o" style="margin-top:0;padding:10px;font-size:13px;flex:1" onclick="cancelMoodEdit()">Отмена</button>'
+        + '</div></div>';
+    } else {
+      hh += '<div class="mood-hist-card">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center'+(e.plans||e.result?';margin-bottom:8px':'')+'">'
+        + '<span style="font-size:13px;color:var(--hint)">'+lbl+'</span>'
+        + '<div style="display:flex;align-items:center;gap:8px">'
+        + (e.mood?'<span style="font-size:22px;font-weight:800;color:'+mc+'">'+e.mood+'</span>':'')
+        + '<button onclick="editMoodEntry(\''+e.date+'\')" style="background:none;border:none;color:var(--hint);opacity:.4;font-size:15px;cursor:pointer;padding:2px 4px;line-height:1">✎</button>'
+        + '</div></div>'
+        + (e.plans?'<div style="font-size:13px;color:var(--hint);margin-bottom:4px">📋 '+esc(e.plans)+'</div>':'')
+        + (e.result?'<div style="font-size:13px;color:var(--text)">✅ '+esc(e.result)+'</div>':'')
+        + '</div>';
+    }
   });
   histEl.innerHTML = hh;
 }
@@ -1414,6 +1484,42 @@ function saveTodayMood() {
   if (btn) { btn.textContent = '✓ Сохранено'; btn.disabled = true; setTimeout(function(){ btn.textContent='Сохранить'; btn.disabled=false; }, 2000); }
   var now = new Date();
   if (lbl) lbl.textContent = 'Сохранено в '+now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  renderMood();
+}
+
+function editMoodEntry(date) {
+  _editMoodDate = date;
+  _editMoodTmp = null;
+  haptic('light');
+  renderMood();
+}
+function cancelMoodEdit() {
+  _editMoodDate = null;
+  _editMoodTmp = null;
+  renderMood();
+}
+function setEditMood(v, date) {
+  _editMoodTmp = v;
+  // Update buttons in-place
+  var histEl = document.getElementById('mood-hist-section');
+  if (!histEl) return;
+  histEl.querySelectorAll('.mood-btn').forEach(function(btn, i) {
+    btn.classList.toggle('sel', i+1 === v);
+  });
+}
+function saveMoodEditEntry(date) {
+  var plans  = (document.getElementById('medit-plans')||{}).value||'';
+  var result = (document.getElementById('medit-result')||{}).value||'';
+  var entries = JSON.parse(localStorage.getItem('mood_entries')||'[]');
+  var idx = entries.findIndex(function(e){ return e.date===date; });
+  var moodVal = _editMoodTmp !== null ? _editMoodTmp : (idx>=0 ? entries[idx].mood : 0);
+  var entry = {date:date, mood:moodVal, plans:plans, result:result};
+  if (idx>=0) entries[idx]=entry; else entries.push(entry);
+  localStorage.setItem('mood_entries', JSON.stringify(entries));
+  _editMoodDate = null;
+  _editMoodTmp = null;
+  haptic('light');
+  notify('success');
   renderMood();
 }
 
