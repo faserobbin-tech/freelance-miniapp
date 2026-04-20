@@ -58,6 +58,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .bdg-green{background:rgba(39,174,96,.12);color:#27ae60}
 .bdg-done{background:var(--bg2);color:var(--hint)}
 .bdg-ton{background:rgba(0,152,234,.12);color:var(--ton)}
+.bdg-warn{background:rgba(243,156,18,.12);color:#f39c12}
+/* ── AMOUNT PRESETS ── */
+.amt-presets{display:flex;gap:6px;margin-bottom:10px}
+.amt-preset{flex:1;padding:8px 4px;border:1.5px solid var(--sep);border-radius:10px;background:var(--bg2);color:var(--hint);font-size:12px;font-weight:700;cursor:pointer;text-align:center;font-family:inherit;transition:all .12s}
+.amt-preset:active{background:var(--btn);color:var(--btnt);border-color:var(--btn)}
+/* ── FINANCE ── */
+.fin-nw-card{background:var(--bg);border-radius:18px;padding:16px 18px 12px;margin-bottom:10px;box-shadow:0 2px 14px rgba(0,0,0,.08)}
+.fin-nw-lbl{font-size:11px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.fin-nw-total{font-size:34px;font-weight:800;letter-spacing:-.5px;color:var(--text);margin-bottom:12px;line-height:1.1}
+.fin-acc-row{display:flex;align-items:center;padding:9px 0;border-bottom:1px solid var(--sep)}
+.fin-acc-row:last-child{border-bottom:none}
+.fin-acc-lbl{font-size:14px;color:var(--text)}
+.fin-acc-sub{font-size:11px;color:var(--hint);margin-top:1px}
+.fin-runway{background:var(--bg);border-radius:14px;padding:13px 16px;margin-bottom:10px;box-shadow:0 1px 8px rgba(0,0,0,.06)}
+/* ── MOOD ── */
+.mood-today{background:var(--bg);border-radius:18px;padding:16px 18px;margin-bottom:10px;box-shadow:0 2px 14px rgba(0,0,0,.08)}
+.mood-scale{display:flex;gap:4px;margin:8px 0 12px}
+.mood-btn{flex:1;aspect-ratio:1;border:1.5px solid var(--sep);border-radius:8px;background:var(--bg2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--hint);transition:all .12s;display:flex;align-items:center;justify-content:center;padding:0}
+.mood-btn.sel{background:var(--btn);color:var(--btnt);border-color:var(--btn)}
+.mood-hist-card{background:var(--bg);border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 8px rgba(0,0,0,.06)}
 
 /* ── SKELETON ── */
 .skel{border-radius:18px;margin-bottom:9px;height:76px;background:linear-gradient(90deg,var(--bg2) 25%,var(--bg) 50%,var(--bg2) 75%);background-size:200% 100%;animation:sh 1.4s infinite}
@@ -171,7 +191,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <div class="tabs">
   <div class="tab active" onclick="showTab('debts')"><i>💸</i>Фрилансы</div>
   <div class="tab" onclick="showTab('gifts')"><i>🎁</i>Подарки</div>
-  <div class="tab" onclick="showTab('ton')"><i>💎</i>TON</div>
+  <div class="tab" onclick="showTab('ton')"><i>💰</i>Финансы</div>
+  <div class="tab" onclick="showTab('mood')"><i>🧠</i>Настроение</div>
 </div>
 
 <!-- ── DEBTS ── -->
@@ -187,8 +208,44 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div id="gifts-list"><div class="skel"></div><div class="skel"></div></div>
 </div>
 
-<!-- ── TON ── -->
+<!-- ── TON / ФИНАНСЫ ── -->
 <div id="tab-ton" class="page">
+  <!-- Net Worth card -->
+  <div class="fin-nw-card">
+    <div class="fin-nw-lbl">Net Worth</div>
+    <div class="fin-nw-total" id="fin-total">—</div>
+    <div class="fin-acc-row">
+      <div style="flex:1"><div class="fin-acc-lbl">🏦 Сбер</div></div>
+      <input class="ton-inp" id="fin-sber" type="text" placeholder="0" inputmode="decimal">
+    </div>
+    <div class="fin-acc-row">
+      <div style="flex:1"><div class="fin-acc-lbl">📈 Инвесткопилка</div></div>
+      <input class="ton-inp" id="fin-invest" type="text" placeholder="0" inputmode="decimal">
+    </div>
+    <div class="fin-acc-row">
+      <div style="flex:1"><div class="fin-acc-lbl">💎 TON</div><div class="fin-acc-sub">автоматически</div></div>
+      <span class="ton-val blue" id="fin-ton-rub">—</span>
+    </div>
+    <div class="fin-acc-row">
+      <div style="flex:1"><div class="fin-acc-lbl">💵 Наличные</div></div>
+      <input class="ton-inp" id="fin-cash" type="text" placeholder="0" inputmode="decimal">
+    </div>
+    <div class="fin-acc-row">
+      <div style="flex:1"><div class="fin-acc-lbl">💸 Выплатят по фрилансу</div><div class="fin-acc-sub">из первой вкладки</div></div>
+      <span class="ton-val" id="fin-debts-rub">—</span>
+    </div>
+  </div>
+  <!-- Runway -->
+  <div class="fin-runway">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
+      <span style="font-size:13px;color:var(--hint)">Runway</span>
+      <span style="font-size:24px;font-weight:800;color:var(--text)" id="fin-runway-days">—</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:12px;color:var(--hint)">Средний расход / мес</span>
+      <span style="font-size:13px;font-weight:600;color:var(--hint)" id="fin-avg-exp">—</span>
+    </div>
+  </div>
   <div class="ton-panel" id="ton-panel">
     <div class="ton-row">
       <span class="ton-lbl">Мой баланс TON</span>
@@ -211,6 +268,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <span class="ton-val hero" id="ton-portfolio">—</span>
     </div>
   </div>
+</div>
+
+<!-- ── MOOD ── -->
+<div id="tab-mood" class="page">
+  <div class="mood-today">
+    <div style="font-size:13px;font-weight:700;color:var(--hint);margin-bottom:10px" id="mood-today-date"></div>
+    <div class="fin-nw-lbl">Настроение сегодня</div>
+    <div class="mood-scale" id="mood-scale"></div>
+    <div class="fg" style="margin-bottom:10px">
+      <label>Планы на сегодня</label>
+      <textarea id="mood-plans" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--sep);border-radius:10px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit" placeholder="Что хочу сделать..."></textarea>
+    </div>
+    <div class="fg" style="margin-bottom:2px">
+      <label>Итог дня</label>
+      <textarea id="mood-result" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--sep);border-radius:10px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit" placeholder="Что удалось..."></textarea>
+    </div>
+    <button class="btn-p" id="mood-save-btn" onclick="saveTodayMood()">Сохранить</button>
+  </div>
+  <div id="mood-hist-section"></div>
 </div>
 
 <!-- ── MODAL: ADD DEBT ── -->
@@ -277,6 +353,12 @@ let _dlEditOpen = false;
 let _iconPickOpen = false;
 let _workDate = '';
 let _datePickOpen = false;
+let _editHistIdx = -1; // original history index being date-edited
+// ── FINANCE ──
+let _finTonRub = 0;
+let _finDebtsRub = 0;
+// ── MOOD ──
+let _todayMood = 0;
 var ICONS = Array.from({length:12}, function(_,i){ return 'https://faserobbin-tech.github.io/freelance-miniapp/icons/Icon_'+(i+1)+'.png'; });
 
 function toggleDetHist() { _detHistOpen = !_detHistOpen; renderDet(); }
@@ -292,6 +374,10 @@ function setWorkDate(type) {
     var v = document.getElementById('det-pay-dt-custom');
     if (v && v.value) { _workDate = v.value; renderDet(); }
   }
+}
+function setAmt(v) {
+  var inp = document.getElementById('det-pay-am');
+  if (inp) { inp.value = v; haptic('light'); }
 }
 function setWorkSign(s) {
   _workSign = s;
@@ -434,7 +520,7 @@ document.addEventListener('paste', function(e) {
 // ── TABS ──────────────────────────────────────────
 function showTab(t) {
   curTab = t;
-  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', ['debts','gifts','ton'][i]===t));
+  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', ['debts','gifts','ton','mood'][i]===t));
   document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
 
@@ -444,10 +530,19 @@ function showTab(t) {
     setupMainBtn('Добавить подарок', openGiftAdd);
     if (!gifts.length) loadGifts();
     if (!tonRate || Date.now()-tonRateAt > 300000) loadTonRate();
-  } else {
+  } else if (t === 'mood') {
+    if (tg) tg.MainButton.hide();
+    _todayMood = 0;
+    var pl = document.getElementById('mood-plans');
+    var re = document.getElementById('mood-result');
+    if (pl) pl._touched = false;
+    if (re) re._touched = false;
+    renderMood();
+  } else { // ton = Финансы
     if (tg) tg.MainButton.hide();
     if (!gifts.length) loadGifts();
     if (!tonRate || Date.now()-tonRateAt > 300000) loadTonRate();
+    loadFinData();
   }
 }
 
@@ -512,8 +607,10 @@ function deadlineBadge(deadline) {
   var ms = new Date(deadline).getTime() - Date.now();
   var days = Math.ceil(ms / 86400000);
   if (days > 0) return '<div class="bdg bdg-green">через '+days+'\u00A0дн.</div>';
-  if (days === 0) return '<div class="bdg bdg-days">сегодня</div>';
-  return '<div class="bdg bdg-days">'+Math.abs(days)+'\u00A0дн. просрочен</div>';
+  if (days === 0) return '<div class="bdg bdg-warn">сегодня</div>';
+  var over = Math.abs(days);
+  if (over <= 30) return '<div class="bdg bdg-warn">'+over+'\u00A0дн. просрочен</div>';
+  return '<div class="bdg bdg-days">'+over+'\u00A0дн. просрочен</div>';
 }
 function haptic(type) { try { if(tg) tg.HapticFeedback.impactOccurred(type||'medium'); } catch(e){} }
 function notify(type) { try { if(tg) tg.HapticFeedback.notificationOccurred(type||'success'); } catch(e){} }
@@ -524,6 +621,22 @@ function loadDebts() {
     debts = d.debts || [];
     debts.forEach(function(d){ d._deadline = getDeadline(d.id); });
     renderDebts();
+    // ── 30-day overdue reminder (once per day) ──
+    var todayStr = new Date().toISOString().split('T')[0];
+    var notifyKey = 'overdue_shown_'+todayStr;
+    if (!localStorage.getItem(notifyKey)) {
+      var overdueNames = debts.filter(function(d) {
+        if (d.closedAt || !d._deadline) return false;
+        return Math.floor((Date.now()-new Date(d._deadline).getTime())/86400000) >= 30;
+      }).map(function(d){ return d.company; });
+      if (overdueNames.length) {
+        localStorage.setItem(notifyKey, '1');
+        setTimeout(function() {
+          var msg = '⏰ Просрочено 30+ дней:\n' + overdueNames.join(', ');
+          if (tg) tg.showAlert(msg); else alert(msg);
+        }, 800);
+      }
+    }
   }).catch(function() {
     document.getElementById('debts-list').innerHTML = '<div class="empty"><i>⚠️</i><b>Ошибка загрузки</b><span>Проверьте соединение</span></div>';
   });
@@ -533,6 +646,9 @@ function renderDebts() {
   var active = debts.filter(function(d){ return !d.closedAt; });
   var closed = debts.filter(function(d){ return d.closedAt; });
   var total  = active.reduce(function(s,d){ return s+debtTotal(d); },0);
+  // Update finance auto value
+  _finDebtsRub = active.reduce(function(s,d){ return s+Math.max(0,debtTotal(d)); },0);
+  if (curTab==='ton') renderFinance();
 
   var sum = document.getElementById('debts-summary');
   if (debts.length) {
@@ -613,7 +729,7 @@ function addDebt() {
 // ── DEBT DETAIL ───────────────────────────────────
 function openDebtDet(id) {
   haptic('light');
-  _detHistOpen = false; _workSign = 1; _dlEditOpen = false; _iconPickOpen = false;
+  _detHistOpen = false; _workSign = 1; _dlEditOpen = false; _iconPickOpen = false; _editHistIdx = -1;
   _workDate = new Date().toISOString().split('T')[0]; _datePickOpen = false;
   curDebt = debts.find(function(d){ return d.id===id; });
   if (!curDebt) return;
@@ -695,7 +811,13 @@ function renderDet() {
     + '<button class="sign-btn'+(_workSign===1?' active-add':'')+'" onclick="setWorkSign(1)">＋</button>'
     + '<button class="sign-btn'+(_workSign===-1?' active-sub':'')+'" onclick="setWorkSign(-1)">−</button>'
     + '</div></div>';
-  // 2. Чипы даты + раскрывающийся пикер
+  // 2. Пресеты суммы
+  html += '<div class="amt-presets">'
+    + '<button class="amt-preset" onclick="setAmt(8000)">8 000</button>'
+    + '<button class="amt-preset" onclick="setAmt(4000)">4 000</button>'
+    + '<button class="amt-preset" onclick="setAmt(2000)">2 000</button>'
+    + '</div>';
+  // 3. Чипы даты + раскрывающийся пикер
   html += '<div class="date-chips">'
     + '<button class="date-chip'+(isToday?' active':'')+'" onclick="setWorkDate(\'today\')">Сегодня</button>'
     + '<button class="date-chip'+(isYest?' active':'')+'" onclick="setWorkDate(\'yest\')">Вчера</button>'
@@ -706,7 +828,7 @@ function renderDet() {
       + '<input id="det-pay-dt-custom" type="date" value="'+_workDate+'" onchange="setWorkDate(\'custom\')">'
       + '</div>';
   }
-  // 3. Комментарий
+  // 4. Комментарий
   html += '<div class="fg"><label>Комментарий</label><input id="det-pay-cm" placeholder="Необязательно" autocomplete="off"></div>';
   html += '<button class="btn-p" id="det-pay-btn" onclick="addWork()">Записать</button>';
 
@@ -718,41 +840,61 @@ function renderDet() {
     + '</div>';
   if (_detHistOpen) {
     if (histCount) {
-      // ── Группировка по дням (локальная дата, не UTC) ──
-      var histRev = hist.slice().reverse();
+      // ── Группировка по дням с поддержкой переопределения даты (localStorage) ──
+      var histWithIdx = hist.map(function(h, i){ return {h:h, origIdx:i}; }).reverse();
       var dayGroups = [], dayMap = {};
-      histRev.forEach(function(h) {
+      histWithIdx.forEach(function(item) {
+        var h = item.h;
+        var override = localStorage.getItem('hdate_'+curDebt.id+'_'+item.origIdx);
+        var dateForGroup = override || h.date || '';
         var dk;
-        if (h.date && h.date.length > 10) {
-          var d0 = new Date(h.date);
+        if (dateForGroup.length > 10) {
+          var d0 = new Date(dateForGroup);
           dk = d0.getFullYear()+'-'+(d0.getMonth()+1).toString().padStart(2,'0')+'-'+d0.getDate().toString().padStart(2,'0');
-        } else { dk = h.date || 'nodate'; }
+        } else { dk = dateForGroup || 'nodate'; }
         if (!dayMap[dk]) { dayMap[dk] = []; dayGroups.push({key:dk, entries:dayMap[dk]}); }
-        dayMap[dk].push(h);
+        dayMap[dk].push({h:h, origIdx:item.origIdx, override:override});
       });
+      dayGroups.sort(function(a,b){ return b.key.localeCompare(a.key); });
       dayGroups.forEach(function(g) {
-        // ── Разделитель дня ──
         html += '<div style="display:flex;align-items:center;gap:8px;padding:10px 0 4px">'
           + '<span style="font-size:12px;font-weight:700;color:var(--hint);letter-spacing:.3px;white-space:nowrap">'+fmtDateShort(g.key)+'</span>'
           + '<span style="flex:1;height:1px;background:var(--sep);display:block"></span>'
           + '</div>';
-        g.entries.forEach(function(h) {
+        g.entries.forEach(function(item) {
+          var h = item.h, origIdx = item.origIdx;
           var amNum = Number(h.amount||0);
           var amColor = amNum < 0 ? 'var(--red)' : 'var(--btn)';
           var accColor = amNum < 0 ? '#e74c3c' : '#2481cc';
           var amStr = (amNum > 0 ? '+' : '') + fmt(h.amount);
-          // Время: только для старых записей (ISO timestamp) — новые (date-only) времени не имеют
           var timeStr = (!h.recordedAt && h.date && h.date.length > 10)
             ? new Date(h.date).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}) : '';
-          html += '<div class="hist-acc-row">'
-            + '<div class="hist-acc" style="background:'+accColor+'"></div>'
-            + '<div style="flex:1;min-width:0">'
-            + (timeStr ? '<div style="font-size:13px;color:var(--hint)">'+timeStr+'</div>' : '')
-            + (h.comment ? '<div style="font-size:11px;color:var(--hint);margin-top:'+(timeStr?'2px':'0')+'">'+esc(h.comment)+'</div>' : '')
-            + (!timeStr && !h.comment ? '<div style="font-size:12px;color:var(--hint)">—</div>' : '')
-            + '</div>'
-            + '<span style="font-weight:700;color:'+amColor+';white-space:nowrap;margin-left:10px;font-size:14px">'+amStr+'</span>'
-            + '</div>';
+          if (_editHistIdx === origIdx) {
+            // Inline date editor
+            var curDate = item.override || (h.date && h.date.length <= 10 ? h.date
+              : (h.date ? new Date(h.date).toISOString().split('T')[0] : ''));
+            html += '<div class="hist-acc-row" style="flex-wrap:wrap">'
+              + '<div class="hist-acc" style="background:'+accColor+'"></div>'
+              + '<div style="flex:1;min-width:0">'
+              + '<input type="date" id="hedit-'+origIdx+'" value="'+curDate+'" style="padding:6px 8px;border:1.5px solid var(--btn);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);outline:none;font-family:inherit;width:100%">'
+              + '<div style="display:flex;gap:6px;margin-top:6px">'
+              + '<button class="btn-p" style="padding:7px;font-size:12px;margin-top:0;flex:1" onclick="saveHistDate('+origIdx+')">Сохранить</button>'
+              + '<button class="btn-o" style="padding:7px;font-size:12px;margin-top:0;flex:1" onclick="cancelHistDate()">Отмена</button>'
+              + '</div></div>'
+              + '<span style="font-weight:700;color:'+amColor+';white-space:nowrap;margin-left:10px;font-size:14px">'+amStr+'</span>'
+              + '</div>';
+          } else {
+            html += '<div class="hist-acc-row">'
+              + '<div class="hist-acc" style="background:'+accColor+'"></div>'
+              + '<div style="flex:1;min-width:0">'
+              + (timeStr ? '<div style="font-size:13px;color:var(--hint)">'+timeStr+'</div>' : '')
+              + (h.comment ? '<div style="font-size:11px;color:var(--hint);margin-top:'+(timeStr?'2px':'0')+'">'+esc(h.comment)+'</div>' : '')
+              + (!timeStr && !h.comment ? '<div style="font-size:12px;color:var(--hint)">—</div>' : '')
+              + '</div>'
+              + '<span style="font-weight:700;color:'+amColor+';white-space:nowrap;margin-left:10px;font-size:14px">'+amStr+'</span>'
+              + '<button onclick="editHistDate('+origIdx+')" style="background:none;border:none;color:var(--hint);opacity:.4;font-size:14px;cursor:pointer;padding:0 0 0 8px;line-height:1;flex-shrink:0">✎</button>'
+              + '</div>';
+          }
         });
       });
     } else {
@@ -800,6 +942,16 @@ function addWork() {
       btn.disabled=false;
       if(d.ok){ notify('success'); curDebt.history=curDebt.history||[]; curDebt.history.push(localEntry); renderDet(); loadDebts(); }
     }).catch(function(){ btn.disabled=false; });
+}
+function editHistDate(origIdx) { _editHistIdx = origIdx; haptic('light'); renderDet(); }
+function cancelHistDate() { _editHistIdx = -1; renderDet(); }
+function saveHistDate(origIdx) {
+  var inp = document.getElementById('hedit-'+origIdx);
+  if (!inp || !inp.value) return;
+  try { localStorage.setItem('hdate_'+curDebt.id+'_'+origIdx, inp.value); } catch(e){}
+  _editHistIdx = -1;
+  haptic('light');
+  renderDet();
 }
 function delDebt() {
   function go() {
@@ -989,6 +1141,60 @@ function delGiftFromDet() {
   else if(confirm('Удалить?')) go();
 }
 
+// ── FINANCE ───────────────────────────────────────
+function loadFinData() {
+  var el;
+  if ((el=document.getElementById('fin-sber')))   el.value = localStorage.getItem('fin_sber') || '';
+  if ((el=document.getElementById('fin-invest'))) el.value = localStorage.getItem('fin_invest') || '';
+  if ((el=document.getElementById('fin-cash')))   el.value = localStorage.getItem('fin_cash') || '';
+  renderFinance();
+}
+function renderFinance() {
+  var sber   = parseFloat((document.getElementById('fin-sber')||{}).value||'0') || 0;
+  var invest = parseFloat((document.getElementById('fin-invest')||{}).value||'0') || 0;
+  var cash   = parseFloat((document.getElementById('fin-cash')||{}).value||'0') || 0;
+  var tonRub   = _finTonRub || 0;
+  var debtsRub = _finDebtsRub || 0;
+  var total = sber + invest + cash + tonRub + debtsRub;
+  var el;
+  if ((el=document.getElementById('fin-total')))     el.textContent = fmt(total);
+  if ((el=document.getElementById('fin-ton-rub')))   el.textContent = tonRub   ? fmt(tonRub)   : '—';
+  if ((el=document.getElementById('fin-debts-rub'))) el.textContent = debtsRub ? fmt(debtsRub) : '—';
+  // Runway
+  var snaps = JSON.parse(localStorage.getItem('fin_snapshots')||'[]');
+  var avgExp = 0;
+  if (snaps.length >= 2) {
+    var sorted = snaps.slice().sort(function(a,b){ return a.ts.localeCompare(b.ts); });
+    var diffs = [];
+    for (var i=1; i<sorted.length; i++) {
+      var daysDiff = (new Date(sorted[i].ts) - new Date(sorted[i-1].ts)) / 86400000;
+      if (daysDiff > 0) diffs.push((sorted[i-1].nw - sorted[i].nw) / daysDiff * 30);
+    }
+    if (diffs.length) avgExp = diffs.reduce(function(a,b){return a+b;},0) / diffs.length;
+  }
+  if ((el=document.getElementById('fin-runway-days'))) {
+    el.textContent = (avgExp > 0 && total > 0)
+      ? Math.round(total / avgExp * 30) + '\u00A0дн.'
+      : '—';
+  }
+  if ((el=document.getElementById('fin-avg-exp'))) {
+    el.textContent = snaps.length >= 2
+      ? (avgExp > 0 ? fmt(avgExp)+'/мес' : '—')
+      : 'нужно 2+ записи';
+  }
+}
+function saveFinSnapshot() {
+  var sber   = parseFloat((document.getElementById('fin-sber')||{}).value||'0') || 0;
+  var invest = parseFloat((document.getElementById('fin-invest')||{}).value||'0') || 0;
+  var cash   = parseFloat((document.getElementById('fin-cash')||{}).value||'0') || 0;
+  var total  = sber + invest + cash + _finTonRub + _finDebtsRub;
+  var today  = new Date().toISOString().split('T')[0];
+  var snaps  = JSON.parse(localStorage.getItem('fin_snapshots')||'[]');
+  var idx    = snaps.findIndex(function(s){ return s.ts === today; });
+  if (idx >= 0) snaps[idx].nw = total; else snaps.push({ts:today, nw:total});
+  localStorage.setItem('fin_snapshots', JSON.stringify(snaps));
+}
+
 // ── TON ───────────────────────────────────────────
 function loadTonRate() {
   fetch('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=rub')
@@ -1009,6 +1215,8 @@ function renderTon() {
     document.getElementById('ton-age').textContent = age < 1 ? ' · только что' : ' · '+age+'\u00A0мин. назад';
     var portfolio = (bal + gifts_sum) * tonRate;
     document.getElementById('ton-portfolio').textContent = fmt(portfolio);
+    _finTonRub = portfolio;
+    renderFinance();
   }
 }
 
@@ -1038,6 +1246,112 @@ document.getElementById('ton-bal').addEventListener('keydown', function(e){
 });
 document.getElementById('ton-bal').value = localStorage.getItem('ton_bal') || '';
 
+// ── FINANCE ACCOUNT INPUTS ──
+var _finKeys = {
+  'fin-sber':   'fin_sber',
+  'fin-invest': 'fin_invest',
+  'fin-cash':   'fin_cash'
+};
+Object.keys(_finKeys).forEach(function(id) {
+  var key = _finKeys[id];
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.value = localStorage.getItem(key) || '';
+  el.addEventListener('input', function() {
+    if (/^[\d\.\s]*$/.test(this.value)) renderFinance();
+  });
+  el.addEventListener('blur', function() {
+    localStorage.setItem(key, this.value);
+    saveFinSnapshot();
+    renderFinance();
+  });
+  el.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
+  });
+});
+
+// ── MOOD ──────────────────────────────────────────
+function renderMood() {
+  var today = new Date().toISOString().split('T')[0];
+  var entries = JSON.parse(localStorage.getItem('mood_entries')||'[]');
+  var todayEntry = entries.find(function(e){ return e.date===today; });
+
+  // Header date
+  var hdEl = document.getElementById('mood-today-date');
+  if (hdEl) {
+    var dt = new Date(today+'T12:00:00');
+    hdEl.textContent = 'Сегодня, '+dt.toLocaleDateString('ru-RU',{day:'numeric',month:'long'}).replace(' г.','');
+  }
+
+  // Mood scale 1–10
+  var scaleEl = document.getElementById('mood-scale');
+  if (scaleEl) {
+    var curMood = _todayMood || (todayEntry && todayEntry.mood) || 0;
+    var sh = '';
+    for (var i=1; i<=10; i++) {
+      sh += '<button class="mood-btn'+(curMood===i?' sel':'')+'" onclick="setTodayMood('+i+')">'+i+'</button>';
+    }
+    scaleEl.innerHTML = sh;
+  }
+
+  // Prefill inputs from saved entry (only if not already edited this session)
+  if (todayEntry) {
+    var pl = document.getElementById('mood-plans');
+    var re = document.getElementById('mood-result');
+    if (pl && !pl._touched) pl.value = todayEntry.plans||'';
+    if (re && !re._touched) re.value = todayEntry.result||'';
+    if (!_todayMood && todayEntry.mood) _todayMood = todayEntry.mood;
+  }
+
+  // History
+  var histEl = document.getElementById('mood-hist-section');
+  if (!histEl) return;
+  var past = entries.filter(function(e){ return e.date!==today; })
+    .sort(function(a,b){ return b.date.localeCompare(a.date); });
+  if (!past.length) { histEl.innerHTML = ''; return; }
+  var hh = '<div class="sect-hd" style="border-top:none;padding-top:0;margin-top:4px">История</div>';
+  past.slice(0,10).forEach(function(e) {
+    var d2 = new Date(e.date+'T12:00:00');
+    var lbl = d2.toLocaleDateString('ru-RU',{day:'numeric',month:'long'}).replace(' г.','');
+    var mc = e.mood<=3?'var(--red)':e.mood<=6?'#f39c12':'#27ae60';
+    hh += '<div class="mood-hist-card">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center'+(e.plans||e.result?';margin-bottom:8px':'')+'">'
+      + '<span style="font-size:13px;color:var(--hint)">'+lbl+'</span>'
+      + (e.mood?'<span style="font-size:22px;font-weight:800;color:'+mc+'">'+e.mood+'</span>':'')
+      + '</div>'
+      + (e.plans?'<div style="font-size:13px;color:var(--hint);margin-bottom:4px">📋 '+esc(e.plans)+'</div>':'')
+      + (e.result?'<div style="font-size:13px;color:var(--text)">✅ '+esc(e.result)+'</div>':'')
+      + '</div>';
+  });
+  histEl.innerHTML = hh;
+}
+function setTodayMood(v) {
+  _todayMood = v;
+  haptic('light');
+  // Update scale buttons in place (no full re-render to preserve textarea content)
+  document.querySelectorAll('.mood-btn').forEach(function(btn, i) {
+    btn.classList.toggle('sel', i+1 === v);
+  });
+}
+function saveTodayMood() {
+  var today  = new Date().toISOString().split('T')[0];
+  var plans  = (document.getElementById('mood-plans')||{}).value||'';
+  var result = (document.getElementById('mood-result')||{}).value||'';
+  var entries = JSON.parse(localStorage.getItem('mood_entries')||'[]');
+  var idx = entries.findIndex(function(e){ return e.date===today; });
+  var entry = {date:today, mood:_todayMood, plans:plans, result:result};
+  if (idx>=0) entries[idx]=entry; else entries.push(entry);
+  localStorage.setItem('mood_entries', JSON.stringify(entries));
+  haptic('light');
+  notify('success');
+  // Mark inputs as touched so prefill doesn't overwrite
+  var pl = document.getElementById('mood-plans');
+  var re = document.getElementById('mood-result');
+  if (pl) pl._touched = true;
+  if (re) re._touched = true;
+  renderMood();
+}
+
 // ── MODAL HELPERS ─────────────────────────────────
 function bgClose(e, id) {
   if (e.target === document.getElementById(id)) {
@@ -1056,6 +1370,7 @@ function bgClose(e, id) {
   loadDebts();
   setupMainBtn('Добавить', openDebtAdd);
   loadTonRate();
+  loadFinData();
 })();
 </script>
 </body>
