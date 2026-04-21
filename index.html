@@ -232,7 +232,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <input class="ton-inp" id="fin-invest" type="text" placeholder="0" inputmode="decimal">
     </div>
     <div class="fin-acc-row">
-      <div style="flex:1"><div class="fin-acc-lbl">💎 TON</div><div class="fin-acc-sub">автоматически</div></div>
+      <div style="flex:1"><div class="fin-acc-lbl">💎 TON</div></div>
       <span class="ton-val blue" id="fin-ton-rub">—</span>
     </div>
     <div class="fin-acc-row">
@@ -240,11 +240,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <input class="ton-inp" id="fin-cash" type="text" placeholder="0" inputmode="decimal">
     </div>
     <div class="fin-acc-row">
-      <div style="flex:1"><div class="fin-acc-lbl">💸 Выплатят по фрилансу</div><div class="fin-acc-sub">из первой вкладки</div></div>
+      <div style="flex:1"><div class="fin-acc-lbl">💸 Выплатят по фрилансу</div></div>
       <span class="ton-val" id="fin-debts-rub">—</span>
     </div>
     <div class="fin-acc-row">
-      <div style="flex:1"><div class="fin-acc-lbl" style="color:var(--hint)">🛡️ Резерв</div><div class="fin-acc-sub">не учитывается в Net Worth</div></div>
+      <div style="flex:1"><div class="fin-acc-lbl" style="color:var(--hint)">🛡️ Резерв</div></div>
       <input class="ton-inp" id="fin-reserv" type="text" placeholder="0" inputmode="decimal" style="color:var(--hint)">
     </div>
   </div>
@@ -299,9 +299,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <label>Планы на сегодня</label>
       <textarea id="mood-plans" rows="3" style="width:100%;padding:10px 12px;border:1.5px solid var(--sep);border-radius:10px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit" placeholder="Что хочу сделать..."></textarea>
     </div>
-    <div class="fg" style="margin-bottom:2px">
+    <div class="fg" style="margin-bottom:10px">
       <label>Итог дня</label>
       <textarea id="mood-result" rows="3" style="width:100%;padding:10px 12px;border:1.5px solid var(--sep);border-radius:10px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit" placeholder="Что удалось..."></textarea>
+    </div>
+    <div class="fg" style="margin-bottom:2px">
+      <label>Дневник</label>
+      <textarea id="mood-diary" rows="4" style="width:100%;padding:10px 12px;border:1.5px solid var(--sep);border-radius:10px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit" placeholder="Свободные заметки о дне..."></textarea>
     </div>
     <button class="btn-p" id="mood-save-btn" onclick="saveTodayMood()">Сохранить</button>
     <div id="mood-saved-lbl" style="text-align:center;font-size:12px;color:var(--hint);margin-top:8px;min-height:16px"></div>
@@ -384,6 +388,81 @@ let _todayMood = 0;
 let _editMoodDate = null; // date string of past entry being edited
 let _editMoodTmp = null;  // mood value being set in edit mode
 var ICONS = Array.from({length:12}, function(_,i){ return 'https://faserobbin-tech.github.io/freelance-miniapp/icons/Icon_'+(i+1)+'.png'; });
+
+// ── CLOUD STORAGE ──────────────────────────────────
+var CS = tg && tg.CloudStorage; // shortcut, may be undefined on desktop
+
+// Finance keys synced to CloudStorage
+var _FIN_CLOUD_KEYS = ['fin_sber','fin_invest','fin_cash','fin_reserv','ton_bal','fin_snapshots'];
+
+function saveFinToCloud() {
+  if (!CS) return;
+  var vals = {};
+  _FIN_CLOUD_KEYS.forEach(function(k) {
+    var v = localStorage.getItem(k);
+    if (v !== null) vals[k] = v;
+  });
+  Object.keys(vals).forEach(function(k) {
+    try { CS.setItem(k, vals[k]); } catch(e) {}
+  });
+}
+
+function loadFinFromCloud(cb) {
+  if (!CS) { cb(); return; }
+  CS.getItems(_FIN_CLOUD_KEYS, function(err, vals) {
+    if (!err && vals) {
+      _FIN_CLOUD_KEYS.forEach(function(k) {
+        if (vals[k]) {
+          localStorage.setItem(k, vals[k]);
+          // Update DOM input if it exists
+          var el = document.getElementById(k.replace(/_/g,'-'));
+          if (el && el.tagName === 'INPUT') el.value = vals[k];
+        }
+      });
+    }
+    cb();
+  });
+}
+
+function saveMoodEntryToCloud(entry) {
+  if (!CS || !entry || !entry.date) return;
+  var val = JSON.stringify({mood:entry.mood||0, plans:entry.plans||'', result:entry.result||'', diary:entry.diary||''});
+  try { CS.setItem('m_'+entry.date, val); } catch(e) {}
+}
+
+function loadMoodFromCloud(cb) {
+  if (!CS) { cb(); return; }
+  CS.getKeys(function(err, keys) {
+    if (err || !keys) { cb(); return; }
+    var mKeys = keys.filter(function(k){ return k.indexOf('m_'===0); });
+    // fix: indexOf check
+    mKeys = keys.filter(function(k){ return k.slice(0,2) === 'm_'; });
+    if (!mKeys.length) { cb(); return; }
+    CS.getItems(mKeys, function(err2, vals) {
+      if (err2 || !vals) { cb(); return; }
+      var local = JSON.parse(localStorage.getItem('mood_entries')||'[]');
+      var byDate = {};
+      local.forEach(function(e){ byDate[e.date] = e; });
+      // Merge CloudStorage entries (cloud wins on conflict)
+      mKeys.forEach(function(k) {
+        if (!vals[k]) return;
+        var date = k.slice(2);
+        try {
+          var ce = JSON.parse(vals[k]);
+          byDate[date] = {date:date, mood:ce.mood||0, plans:ce.plans||'', result:ce.result||'', diary:ce.diary||''};
+        } catch(e) {}
+      });
+      // Push any local-only entries to CloudStorage
+      local.forEach(function(e) {
+        if (!vals['m_'+e.date]) saveMoodEntryToCloud(e);
+      });
+      var merged = Object.keys(byDate).map(function(d){ return byDate[d]; })
+        .sort(function(a,b){ return b.date.localeCompare(a.date); });
+      localStorage.setItem('mood_entries', JSON.stringify(merged));
+      cb();
+    });
+  });
+}
 
 function toggleDetHist() { _detHistOpen = !_detHistOpen; renderDet(); }
 function toggleDlEdit()  { _dlEditOpen  = !_dlEditOpen;  renderDet(); }
@@ -559,9 +638,11 @@ function showTab(t) {
     _todayMood = 0;
     var pl = document.getElementById('mood-plans');
     var re = document.getElementById('mood-result');
+    var di = document.getElementById('mood-diary');
     if (pl) pl._touched = false;
     if (re) re._touched = false;
-    renderMood();
+    if (di) di._touched = false;
+    loadMoodFromCloud(function() { renderMood(); });
   } else { // ton = Финансы
     if (tg) tg.MainButton.hide();
     if (!gifts.length) loadGifts();
@@ -1196,12 +1277,16 @@ function delGiftFromDet() {
 
 // ── FINANCE ───────────────────────────────────────
 function loadFinData() {
-  var el;
-  if ((el=document.getElementById('fin-sber')))   el.value = localStorage.getItem('fin_sber') || '';
-  if ((el=document.getElementById('fin-invest'))) el.value = localStorage.getItem('fin_invest') || '';
-  if ((el=document.getElementById('fin-cash')))   el.value = localStorage.getItem('fin_cash') || '';
-  if ((el=document.getElementById('fin-reserv'))) el.value = localStorage.getItem('fin_reserv') || '';
-  renderFinance();
+  loadFinFromCloud(function() {
+    var el;
+    if ((el=document.getElementById('fin-sber')))   el.value = localStorage.getItem('fin_sber') || '';
+    if ((el=document.getElementById('fin-invest'))) el.value = localStorage.getItem('fin_invest') || '';
+    if ((el=document.getElementById('fin-cash')))   el.value = localStorage.getItem('fin_cash') || '';
+    if ((el=document.getElementById('fin-reserv'))) el.value = localStorage.getItem('fin_reserv') || '';
+    var tonEl = document.getElementById('ton-bal');
+    if (tonEl && !tonEl.value) tonEl.value = localStorage.getItem('ton_bal') || '';
+    renderFinance();
+  });
 }
 function renderFinance() {
   var sber   = parseFloat((document.getElementById('fin-sber')||{}).value||'0') || 0;
@@ -1249,6 +1334,7 @@ function saveFinSnapshot() {
   var idx    = snaps.findIndex(function(s){ return s.ts === today; });
   if (idx >= 0) snaps[idx].nw = total; else snaps.push({ts:today, nw:total});
   localStorage.setItem('fin_snapshots', JSON.stringify(snaps));
+  saveFinToCloud();
 }
 
 // ── TON ───────────────────────────────────────────
@@ -1279,6 +1365,7 @@ function renderTon() {
 document.getElementById('ton-bal').addEventListener('input', function(){
   if (/^[\d\.\s]*$/.test(this.value)) {
     localStorage.setItem('ton_bal', this.value);
+    saveFinToCloud();
     renderTon();
   }
 });
@@ -1367,6 +1454,7 @@ function initBulletTextarea(id) {
 setTimeout(function() {
   initBulletTextarea('mood-plans');
   initBulletTextarea('mood-result');
+  // diary — no bullet points, free form
 }, 100);
 
 // ── MOOD ──────────────────────────────────────────
@@ -1397,8 +1485,10 @@ function renderMood() {
   if (todayEntry) {
     var pl = document.getElementById('mood-plans');
     var re = document.getElementById('mood-result');
+    var di = document.getElementById('mood-diary');
     if (pl && !pl._touched) pl.value = todayEntry.plans||'';
     if (re && !re._touched) re.value = todayEntry.result||'';
+    if (di && !di._touched) di.value = todayEntry.diary||'';
     if (!_todayMood && todayEntry.mood) _todayMood = todayEntry.mood;
     // Show "already saved" hint
     var lbl = document.getElementById('mood-saved-lbl');
@@ -1448,7 +1538,8 @@ function renderMood() {
         + '<button onclick="editMoodEntry(\''+e.date+'\')" style="background:none;border:none;color:var(--hint);opacity:.4;font-size:15px;cursor:pointer;padding:2px 4px;line-height:1">✎</button>'
         + '</div></div>'
         + (e.plans?'<div style="font-size:13px;color:var(--hint);margin-bottom:4px">📋 '+esc(e.plans)+'</div>':'')
-        + (e.result?'<div style="font-size:13px;color:var(--text)">✅ '+esc(e.result)+'</div>':'')
+        + (e.result?'<div style="font-size:13px;color:var(--text);margin-bottom:'+(e.diary?'4px':'0')+'">✅ '+esc(e.result)+'</div>':'')
+        + (e.diary?'<div style="font-size:13px;color:var(--hint);font-style:italic;border-top:1px solid var(--sep);padding-top:6px;margin-top:4px">📓 '+esc(e.diary)+'</div>':'')
         + '</div>';
     }
   });
@@ -1466,18 +1557,22 @@ function saveTodayMood() {
   var today  = new Date().toISOString().split('T')[0];
   var plans  = (document.getElementById('mood-plans')||{}).value||'';
   var result = (document.getElementById('mood-result')||{}).value||'';
+  var diary  = (document.getElementById('mood-diary')||{}).value||'';
   var entries = JSON.parse(localStorage.getItem('mood_entries')||'[]');
   var idx = entries.findIndex(function(e){ return e.date===today; });
-  var entry = {date:today, mood:_todayMood, plans:plans, result:result};
+  var entry = {date:today, mood:_todayMood, plans:plans, result:result, diary:diary};
   if (idx>=0) entries[idx]=entry; else entries.push(entry);
   localStorage.setItem('mood_entries', JSON.stringify(entries));
+  saveMoodEntryToCloud(entry);
   haptic('light');
   notify('success');
   // Mark inputs as touched so prefill doesn't overwrite
   var pl = document.getElementById('mood-plans');
   var re = document.getElementById('mood-result');
+  var di = document.getElementById('mood-diary');
   if (pl) pl._touched = true;
   if (re) re._touched = true;
+  if (di) di._touched = true;
   // Visual feedback
   var btn = document.getElementById('mood-save-btn');
   var lbl = document.getElementById('mood-saved-lbl');
@@ -1513,9 +1608,11 @@ function saveMoodEditEntry(date) {
   var entries = JSON.parse(localStorage.getItem('mood_entries')||'[]');
   var idx = entries.findIndex(function(e){ return e.date===date; });
   var moodVal = _editMoodTmp !== null ? _editMoodTmp : (idx>=0 ? entries[idx].mood : 0);
-  var entry = {date:date, mood:moodVal, plans:plans, result:result};
+  var diary = idx>=0 ? (entries[idx].diary||'') : '';
+  var entry = {date:date, mood:moodVal, plans:plans, result:result, diary:diary};
   if (idx>=0) entries[idx]=entry; else entries.push(entry);
   localStorage.setItem('mood_entries', JSON.stringify(entries));
+  saveMoodEntryToCloud(entry);
   _editMoodDate = null;
   _editMoodTmp = null;
   haptic('light');
