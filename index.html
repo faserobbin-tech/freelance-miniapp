@@ -1300,27 +1300,15 @@ function renderFinance() {
   if ((el=document.getElementById('fin-total')))     el.textContent = fmt(total);
   if ((el=document.getElementById('fin-ton-rub')))   el.textContent = tonRub   ? fmt(tonRub)   : '—';
   if ((el=document.getElementById('fin-debts-rub'))) el.textContent = debtsRub ? fmt(debtsRub) : '—';
-  // Runway
-  var snaps = JSON.parse(localStorage.getItem('fin_snapshots')||'[]');
-  var avgExp = 0;
-  if (snaps.length >= 2) {
-    var sorted = snaps.slice().sort(function(a,b){ return a.ts.localeCompare(b.ts); });
-    var diffs = [];
-    for (var i=1; i<sorted.length; i++) {
-      var daysDiff = (new Date(sorted[i].ts) - new Date(sorted[i-1].ts)) / 86400000;
-      if (daysDiff > 0) diffs.push((sorted[i-1].nw - sorted[i].nw) / daysDiff * 30);
-    }
-    if (diffs.length) avgExp = diffs.reduce(function(a,b){return a+b;},0) / diffs.length;
-  }
+  // Runway — fixed monthly expense 85 000
+  var fixedExp = 85000;
   if ((el=document.getElementById('fin-runway-days'))) {
-    el.textContent = (avgExp > 0 && total > 0)
-      ? Math.round(total / avgExp * 30) + '\u00A0дн.'
+    el.textContent = total > 0
+      ? Math.round(total / fixedExp * 30) + ' дн.'
       : '—';
   }
   if ((el=document.getElementById('fin-avg-exp'))) {
-    el.textContent = snaps.length >= 2
-      ? (avgExp > 0 ? fmt(avgExp)+'/мес' : '—')
-      : 'нужно 2+ записи';
+    el.textContent = '85 000 ₽/мес';
   }
 }
 function saveFinSnapshot() {
@@ -1403,23 +1391,24 @@ Object.keys(_finKeys).forEach(function(id) {
   el.value = localStorage.getItem(key) || '';
   el.addEventListener('input', function() { renderFinance(); });
   el.addEventListener('blur', function() {
+    var val = this.value.trim();
+    if (/[\+\-\*\/]/.test(val) && /^[\d\s\+\-\*\/\.\(\)]+$/.test(val)) {
+      try {
+        var res = Function('return (' + val + ')')();
+        if (typeof res === 'number' && isFinite(res)) {
+          this.value = parseFloat(res.toFixed(2));
+          haptic('light');
+        }
+      } catch(e2) {}
+    }
     localStorage.setItem(key, this.value);
     saveFinSnapshot();
+    saveFinToCloud();
     renderFinance();
   });
   el.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
-      var val = this.value.trim();
-      if (/^[\d\s\+\-\*\/\.\(\)]+$/.test(val)) {
-        try {
-          var res = Function('return (' + val + ')')();
-          if (typeof res === 'number' && isFinite(res)) {
-            this.value = parseFloat(res.toFixed(2));
-            haptic('light');
-          }
-        } catch(e2) {}
-      }
       this.blur();
     }
   });
