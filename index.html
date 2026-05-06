@@ -1303,12 +1303,13 @@ function renderFinance() {
   // Runway — fixed monthly expense 85 000
   var fixedExp = 85000;
   if ((el=document.getElementById('fin-runway-days'))) {
-    el.textContent = total > 0
-      ? Math.round(total / fixedExp * 30) + ' дн.'
-      : '—';
-  }
-  if ((el=document.getElementById('fin-avg-exp'))) {
-    el.textContent = '85 000 ₽/мес';
+    if (total > 0) {
+      var rwDays = Math.round(total / fixedExp * 30);
+      var rwMonths = (total / fixedExp).toFixed(1);
+      el.textContent = rwDays + ' дн. (' + rwMonths + ' мес.)';
+    } else {
+      el.textContent = '—';
+    }
   }
 }
 function saveFinSnapshot() {
