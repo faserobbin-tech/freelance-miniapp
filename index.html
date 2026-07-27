@@ -72,13 +72,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .fin-acc-lbl{font-size:14px;color:var(--text)}
 .fin-acc-sub{font-size:11px;color:var(--hint);margin-top:1px}
 .fin-runway{background:var(--bg);border-radius:14px;padding:13px 16px;margin-bottom:10px;box-shadow:0 1px 8px rgba(0,0,0,.06)}
-/* ── MOOD ── */
-.mood-today{background:var(--bg);border-radius:18px;padding:16px 18px;margin-bottom:10px;box-shadow:0 2px 14px rgba(0,0,0,.08)}
-.mood-scale{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin:8px 0 12px}
-.mood-btn{aspect-ratio:1;border:1.5px solid var(--sep);border-radius:10px;background:var(--bg2);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--hint);transition:all .12s;display:flex;align-items:center;justify-content:center;padding:0;width:100%}
-.mood-btn.sel{background:var(--btn);color:var(--btnt);border-color:var(--btn)}
-.mood-hist-card{background:var(--bg);border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 8px rgba(0,0,0,.06)}
-
 /* ── SKELETON ── */
 .skel{border-radius:18px;margin-bottom:9px;height:76px;background:linear-gradient(90deg,var(--bg2) 25%,var(--bg) 50%,var(--bg2) 75%);background-size:200% 100%;animation:sh 1.4s infinite}
 @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
@@ -201,7 +194,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div class="tab active" onclick="showTab('debts')"><i>💸</i>Фрилансы</div>
   <div class="tab" onclick="showTab('gifts')"><i>🎁</i>Подарки</div>
   <div class="tab" onclick="showTab('ton')"><i>💰</i>Финансы</div>
-  <div class="tab" onclick="showTab('mood')"><i>🧠</i>Настроение</div>
 </div>
 
 <!-- ── DEBTS ── -->
@@ -248,7 +240,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <input class="ton-inp" id="fin-reserv" type="text" placeholder="0" inputmode="decimal" style="color:var(--hint)">
     </div>
   </div>
-  <!-- Runway -->
+  <!-- Net Worth USD -->
+  <div class="fin-acc-row" style="margin-top:6px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;color:var(--hint)">Net Worth в $</span>
+      <span id="fin-nw-usd" style="font-size:16px;font-weight:700;color:var(--hint)">—</span>
+    </div>
+  </div>
+    <!-- Runway -->
   <div class="fin-runway">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
       <span style="font-size:13px;color:var(--hint)">Runway</span>
@@ -287,30 +286,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       </div>
     </div>
   </div>
-</div>
-
-<!-- ── MOOD ── -->
-<div id="tab-mood" class="page">
-  <div class="mood-today">
-    <div style="font-size:13px;font-weight:700;color:var(--hint);margin-bottom:10px" id="mood-today-date"></div>
-    <div class="fin-nw-lbl">Настроение сегодня</div>
-    <div class="mood-scale" id="mood-scale"></div>
-    <div class="fg" style="margin-bottom:10px">
-      <label>Планы на сегодня</label>
-      <textarea id="mood-plans" rows="3" style="width:100%;padding:10px 12px;border:1.5px solid var(--sep);border-radius:10px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit" placeholder="Что хочу сделать..."></textarea>
-    </div>
-    <div class="fg" style="margin-bottom:10px">
-      <label>Итог дня</label>
-      <textarea id="mood-result" rows="3" style="width:100%;padding:10px 12px;border:1.5px solid var(--sep);border-radius:10px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit" placeholder="Что удалось..."></textarea>
-    </div>
-    <div class="fg" style="margin-bottom:2px">
-      <label>Дневник</label>
-      <textarea id="mood-diary" rows="4" style="width:100%;padding:10px 12px;border:1.5px solid var(--sep);border-radius:10px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit" placeholder="Свободные заметки о дне..."></textarea>
-    </div>
-    <button class="btn-p" id="mood-save-btn" onclick="saveTodayMood()">Сохранить</button>
-    <div id="mood-saved-lbl" style="text-align:center;font-size:12px;color:var(--hint);margin-top:8px;min-height:16px"></div>
-  </div>
-  <div id="mood-hist-section"></div>
 </div>
 
 <!-- ── MODAL: ADD DEBT ── -->
@@ -383,10 +358,6 @@ let _finTonRub = 0;
 let _finDebtsRub = 0;
 // ── TON ──
 let _tonPanelOpen = false;
-// ── MOOD ──
-let _todayMood = 0;
-let _editMoodDate = null; // date string of past entry being edited
-let _editMoodTmp = null;  // mood value being set in edit mode
 var ICONS = Array.from({length:12}, function(_,i){ return 'https://faserobbin-tech.github.io/freelance-miniapp/icons/Icon_'+(i+1)+'.png'; });
 
 // ── CLOUD STORAGE ──────────────────────────────────
@@ -421,46 +392,6 @@ function loadFinFromCloud(cb) {
       });
     }
     cb();
-  });
-}
-
-function saveMoodEntryToCloud(entry) {
-  if (!CS || !entry || !entry.date) return;
-  var val = JSON.stringify({mood:entry.mood||0, plans:entry.plans||'', result:entry.result||'', diary:entry.diary||''});
-  try { CS.setItem('m_'+entry.date, val); } catch(e) {}
-}
-
-function loadMoodFromCloud(cb) {
-  if (!CS) { cb(); return; }
-  CS.getKeys(function(err, keys) {
-    if (err || !keys) { cb(); return; }
-    var mKeys = keys.filter(function(k){ return k.indexOf('m_'===0); });
-    // fix: indexOf check
-    mKeys = keys.filter(function(k){ return k.slice(0,2) === 'm_'; });
-    if (!mKeys.length) { cb(); return; }
-    CS.getItems(mKeys, function(err2, vals) {
-      if (err2 || !vals) { cb(); return; }
-      var local = JSON.parse(localStorage.getItem('mood_entries')||'[]');
-      var byDate = {};
-      local.forEach(function(e){ byDate[e.date] = e; });
-      // Merge CloudStorage entries (cloud wins on conflict)
-      mKeys.forEach(function(k) {
-        if (!vals[k]) return;
-        var date = k.slice(2);
-        try {
-          var ce = JSON.parse(vals[k]);
-          byDate[date] = {date:date, mood:ce.mood||0, plans:ce.plans||'', result:ce.result||'', diary:ce.diary||''};
-        } catch(e) {}
-      });
-      // Push any local-only entries to CloudStorage
-      local.forEach(function(e) {
-        if (!vals['m_'+e.date]) saveMoodEntryToCloud(e);
-      });
-      var merged = Object.keys(byDate).map(function(d){ return byDate[d]; })
-        .sort(function(a,b){ return b.date.localeCompare(a.date); });
-      localStorage.setItem('mood_entries', JSON.stringify(merged));
-      cb();
-    });
   });
 }
 
@@ -623,7 +554,7 @@ document.addEventListener('paste', function(e) {
 // ── TABS ──────────────────────────────────────────
 function showTab(t) {
   curTab = t;
-  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', ['debts','gifts','ton','mood'][i]===t));
+  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', ['debts','gifts','ton'][i]===t));
   document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
 
@@ -633,16 +564,6 @@ function showTab(t) {
     setupMainBtn('Добавить подарок', openGiftAdd);
     if (!gifts.length) loadGifts();
     if (!tonRate || Date.now()-tonRateAt > 300000) loadTonRate();
-  } else if (t === 'mood') {
-    if (tg) tg.MainButton.hide();
-    _todayMood = 0;
-    var pl = document.getElementById('mood-plans');
-    var re = document.getElementById('mood-result');
-    var di = document.getElementById('mood-diary');
-    if (pl) pl._touched = false;
-    if (re) re._touched = false;
-    if (di) di._touched = false;
-    loadMoodFromCloud(function() { renderMood(); });
   } else { // ton = Финансы
     if (tg) tg.MainButton.hide();
     if (!gifts.length) loadGifts();
@@ -726,23 +647,7 @@ function loadDebts() {
     debts = d.debts || [];
     debts.forEach(function(d){ d._deadline = getDeadline(d.id); });
     renderDebts();
-    // ── 30-day overdue reminder (once per day) ──
-    var todayStr = new Date().toISOString().split('T')[0];
-    var notifyKey = 'overdue_shown_'+todayStr;
-    if (!localStorage.getItem(notifyKey)) {
-      var overdueNames = debts.filter(function(d) {
-        if (d.closedAt || !d._deadline) return false;
-        return Math.floor((Date.now()-new Date(d._deadline).getTime())/86400000) >= 30;
-      }).map(function(d){ return d.company; });
-      if (overdueNames.length) {
-        localStorage.setItem(notifyKey, '1');
-        setTimeout(function() {
-          var msg = '⏰ Просрочено 30+ дней:\n' + overdueNames.join(', ');
-          if (tg) tg.showAlert(msg); else alert(msg);
-        }, 800);
-      }
-    }
-  }).catch(function() {
+      }).catch(function() {
     document.getElementById('debts-list').innerHTML = '<div class="empty"><i>⚠️</i><b>Ошибка загрузки</b><span>Проверьте соединение</span></div>';
   });
 }
@@ -1311,6 +1216,17 @@ function renderFinance() {
       el.textContent = '—';
     }
   }
+  if ((el=document.getElementById('fin-nw-usd'))) {
+    if (total > 0 && _usdRate > 0) {
+      var usd = Math.round(total / _usdRate);
+      el.textContent = '$' + usd.toLocaleString('ru-RU');
+    } else if (total > 0 && _usdRate === 0) {
+      el.textContent = 'загрузка...';
+      loadUsdRate();
+    } else {
+      el.textContent = '—';
+    }
+  }
 }
 function saveFinSnapshot() {
   var sber   = parseFloat((document.getElementById('fin-sber')||{}).value||'0') || 0;
@@ -1442,175 +1358,15 @@ function initBulletTextarea(id) {
 }
 // Attach after DOM ready
 setTimeout(function() {
-  initBulletTextarea('mood-plans');
-  initBulletTextarea('mood-result');
-  // diary — no bullet points, free form
 }, 100);
 
-// ── MOOD ──────────────────────────────────────────
-function renderMood() {
-  var today = new Date().toISOString().split('T')[0];
-  var entries = JSON.parse(localStorage.getItem('mood_entries')||'[]');
-  var todayEntry = entries.find(function(e){ return e.date===today; });
-
-  // Header date
-  var hdEl = document.getElementById('mood-today-date');
-  if (hdEl) {
-    var dt = new Date(today+'T12:00:00');
-    hdEl.textContent = 'Сегодня, '+dt.toLocaleDateString('ru-RU',{day:'numeric',month:'long'}).replace(' г.','');
+// Prevent mouse wheel from changing number inputs
+document.addEventListener('wheel', function(e) {
+  if (document.activeElement && document.activeElement.type === 'number') {
+    document.activeElement.blur();
   }
+}, {passive: false});
 
-  // Mood scale 1–10
-  var scaleEl = document.getElementById('mood-scale');
-  if (scaleEl) {
-    var curMood = _todayMood || (todayEntry && todayEntry.mood) || 0;
-    var sh = '';
-    for (var i=1; i<=10; i++) {
-      sh += '<button class="mood-btn'+(curMood===i?' sel':'')+'" onclick="setTodayMood('+i+')">'+i+'</button>';
-    }
-    scaleEl.innerHTML = sh;
-  }
-
-  // Prefill inputs from saved entry (only if not already edited this session)
-  if (todayEntry) {
-    var pl = document.getElementById('mood-plans');
-    var re = document.getElementById('mood-result');
-    var di = document.getElementById('mood-diary');
-    if (pl && !pl._touched) pl.value = todayEntry.plans||'';
-    if (re && !re._touched) re.value = todayEntry.result||'';
-    if (di && !di._touched) di.value = todayEntry.diary||'';
-    if (!_todayMood && todayEntry.mood) _todayMood = todayEntry.mood;
-    // Show "already saved" hint
-    var lbl = document.getElementById('mood-saved-lbl');
-    if (lbl && !lbl.textContent) lbl.textContent = 'Запись на сегодня уже есть';
-  }
-
-  // History
-  var histEl = document.getElementById('mood-hist-section');
-  if (!histEl) return;
-  var past = entries.filter(function(e){ return e.date!==today; })
-    .sort(function(a,b){ return b.date.localeCompare(a.date); });
-  if (!past.length) {
-    histEl.innerHTML = entries.length
-      ? '<div style="text-align:center;padding:16px 0 4px;font-size:13px;color:var(--hint)">История появится со следующего дня</div>'
-      : '';
-    return;
-  }
-  var hh = '<div class="sect-hd" style="border-top:none;padding-top:0;margin-top:4px">История</div>';
-  past.slice(0,10).forEach(function(e) {
-    var d2 = new Date(e.date+'T12:00:00');
-    var lbl = d2.toLocaleDateString('ru-RU',{day:'numeric',month:'long'}).replace(' г.','');
-    var mc = e.mood<=3?'var(--red)':e.mood<=6?'#f39c12':'#27ae60';
-    if (_editMoodDate === e.date) {
-      // Inline edit mode for this entry
-      var editMoodVal = _editMoodTmp !== null ? _editMoodTmp : (e.mood||0);
-      var scaleBtns = '';
-      for (var ii=1; ii<=10; ii++) {
-        scaleBtns += '<button class="mood-btn'+(editMoodVal===ii?' sel':'')+'" onclick="setEditMood('+ii+',\''+e.date+'\')" style="font-size:13px">'+ii+'</button>';
-      }
-      hh += '<div class="mood-hist-card">'
-        + '<div style="font-size:12px;font-weight:700;color:var(--hint);margin-bottom:8px">'+lbl+'</div>'
-        + '<div class="mood-scale" style="margin-bottom:10px">'+scaleBtns+'</div>'
-        + '<div class="fg" style="margin-bottom:8px"><label>Планы</label>'
-        + '<textarea id="medit-plans" rows="2" style="width:100%;padding:8px 10px;border:1.5px solid var(--sep);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit">'+esc(e.plans||'')+'</textarea></div>'
-        + '<div class="fg" style="margin-bottom:10px"><label>Итог</label>'
-        + '<textarea id="medit-result" rows="2" style="width:100%;padding:8px 10px;border:1.5px solid var(--sep);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);outline:none;resize:none;font-family:inherit">'+esc(e.result||'')+'</textarea></div>'
-        + '<div style="display:flex;gap:8px">'
-        + '<button class="btn-p" style="margin-top:0;padding:10px;font-size:13px;flex:1" onclick="saveMoodEditEntry(\''+e.date+'\')">Сохранить</button>'
-        + '<button class="btn-o" style="margin-top:0;padding:10px;font-size:13px;flex:1" onclick="cancelMoodEdit()">Отмена</button>'
-        + '</div></div>';
-    } else {
-      hh += '<div class="mood-hist-card">'
-        + '<div style="display:flex;justify-content:space-between;align-items:center'+(e.plans||e.result?';margin-bottom:8px':'')+'">'
-        + '<span style="font-size:13px;color:var(--hint)">'+lbl+'</span>'
-        + '<div style="display:flex;align-items:center;gap:8px">'
-        + (e.mood?'<span style="font-size:22px;font-weight:800;color:'+mc+'">'+e.mood+'</span>':'')
-        + '<button onclick="editMoodEntry(\''+e.date+'\')" style="background:none;border:none;color:var(--hint);opacity:.4;font-size:15px;cursor:pointer;padding:2px 4px;line-height:1">✎</button>'
-        + '</div></div>'
-        + (e.plans?'<div style="font-size:13px;color:var(--hint);margin-bottom:4px">📋 '+esc(e.plans)+'</div>':'')
-        + (e.result?'<div style="font-size:13px;color:var(--text);margin-bottom:'+(e.diary?'4px':'0')+'">✅ '+esc(e.result)+'</div>':'')
-        + (e.diary?'<div style="font-size:13px;color:var(--hint);font-style:italic;border-top:1px solid var(--sep);padding-top:6px;margin-top:4px">📓 '+esc(e.diary)+'</div>':'')
-        + '</div>';
-    }
-  });
-  histEl.innerHTML = hh;
-}
-function setTodayMood(v) {
-  _todayMood = v;
-  haptic('light');
-  // Update scale buttons in place (no full re-render to preserve textarea content)
-  document.querySelectorAll('.mood-btn').forEach(function(btn, i) {
-    btn.classList.toggle('sel', i+1 === v);
-  });
-}
-function saveTodayMood() {
-  var today  = new Date().toISOString().split('T')[0];
-  var plans  = (document.getElementById('mood-plans')||{}).value||'';
-  var result = (document.getElementById('mood-result')||{}).value||'';
-  var diary  = (document.getElementById('mood-diary')||{}).value||'';
-  var entries = JSON.parse(localStorage.getItem('mood_entries')||'[]');
-  var idx = entries.findIndex(function(e){ return e.date===today; });
-  var entry = {date:today, mood:_todayMood, plans:plans, result:result, diary:diary};
-  if (idx>=0) entries[idx]=entry; else entries.push(entry);
-  localStorage.setItem('mood_entries', JSON.stringify(entries));
-  saveMoodEntryToCloud(entry);
-  haptic('light');
-  notify('success');
-  // Mark inputs as touched so prefill doesn't overwrite
-  var pl = document.getElementById('mood-plans');
-  var re = document.getElementById('mood-result');
-  var di = document.getElementById('mood-diary');
-  if (pl) pl._touched = true;
-  if (re) re._touched = true;
-  if (di) di._touched = true;
-  // Visual feedback
-  var btn = document.getElementById('mood-save-btn');
-  var lbl = document.getElementById('mood-saved-lbl');
-  if (btn) { btn.textContent = '✓ Сохранено'; btn.disabled = true; setTimeout(function(){ btn.textContent='Сохранить'; btn.disabled=false; }, 2000); }
-  var now = new Date();
-  if (lbl) lbl.textContent = 'Сохранено в '+now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
-  renderMood();
-}
-
-function editMoodEntry(date) {
-  _editMoodDate = date;
-  _editMoodTmp = null;
-  haptic('light');
-  renderMood();
-}
-function cancelMoodEdit() {
-  _editMoodDate = null;
-  _editMoodTmp = null;
-  renderMood();
-}
-function setEditMood(v, date) {
-  _editMoodTmp = v;
-  // Update buttons in-place
-  var histEl = document.getElementById('mood-hist-section');
-  if (!histEl) return;
-  histEl.querySelectorAll('.mood-btn').forEach(function(btn, i) {
-    btn.classList.toggle('sel', i+1 === v);
-  });
-}
-function saveMoodEditEntry(date) {
-  var plans  = (document.getElementById('medit-plans')||{}).value||'';
-  var result = (document.getElementById('medit-result')||{}).value||'';
-  var entries = JSON.parse(localStorage.getItem('mood_entries')||'[]');
-  var idx = entries.findIndex(function(e){ return e.date===date; });
-  var moodVal = _editMoodTmp !== null ? _editMoodTmp : (idx>=0 ? entries[idx].mood : 0);
-  var diary = idx>=0 ? (entries[idx].diary||'') : '';
-  var entry = {date:date, mood:moodVal, plans:plans, result:result, diary:diary};
-  if (idx>=0) entries[idx]=entry; else entries.push(entry);
-  localStorage.setItem('mood_entries', JSON.stringify(entries));
-  saveMoodEntryToCloud(entry);
-  _editMoodDate = null;
-  _editMoodTmp = null;
-  haptic('light');
-  notify('success');
-  renderMood();
-}
-
-// ── MODAL HELPERS ─────────────────────────────────
 function bgClose(e, id) {
   if (e.target === document.getElementById(id)) {
     document.getElementById(id).classList.remove('open');
