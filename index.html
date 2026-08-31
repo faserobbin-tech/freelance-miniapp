@@ -378,6 +378,84 @@ function saveFinToCloud() {
   });
 }
 
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+}
+
+function saveDebts() {
+  try { localStorage.setItem('debts', JSON.stringify(debts)); } catch(e) {}
+  if (!CS) return;
+  debts.forEach(function(d) {
+    try { CS.setItem('d_'+d.id, JSON.stringify({company:d.company,project:d.project,manager:d.manager,history:d.history||[],createdAt:d.createdAt})); } catch(e) {}
+  });
+}
+
+function saveGifts() {
+  try { localStorage.setItem('gifts', JSON.stringify(gifts)); } catch(e) {}
+  if (!CS) return;
+  gifts.forEach(function(g) {
+    try { CS.setItem('g_'+g.id, JSON.stringify({collection:g.collection,model:g.model,background:g.background,price:g.price,date:g.date,market:g.market,gift:g.gift,person:g.person||''})); } catch(e) {}
+  });
+}
+
+function loadDebtsFromCloud(cb) {
+  if (!CS) { cb(); return; }
+  CS.getKeys(function(err, keys) {
+    if (err || !keys) { cb(); return; }
+    var dKeys = keys.filter(function(k){ return k.slice(0,2) === 'd_'; });
+    if (!dKeys.length) { cb(); return; }
+    CS.getItems(dKeys, function(err2, vals) {
+      if (err2 || !vals) { cb(); return; }
+      var local = JSON.parse(localStorage.getItem('debts') || '[]');
+      var byId = {};
+      local.forEach(function(d) { byId[d.id] = d; });
+      dKeys.forEach(function(k) {
+        if (!vals[k]) return;
+        var id = k.slice(2);
+        try {
+          var cd = JSON.parse(vals[k]);
+          if (!byId[id]) byId[id] = {id:id, company:cd.company||'', project:cd.project||'', manager:cd.manager||'', history:cd.history||[], createdAt:cd.createdAt||''};
+          else { byId[id].history = cd.history || byId[id].history || []; }
+        } catch(e) {}
+      });
+      local.forEach(function(d) { if (!vals['d_'+d.id]) try { CS.setItem('d_'+d.id, JSON.stringify({company:d.company,project:d.project,manager:d.manager,history:d.history||[],createdAt:d.createdAt})); } catch(e) {} });
+      var merged = Object.keys(byId).map(function(id){ return byId[id]; });
+      merged.forEach(function(d){ d._deadline = getDeadline(d.id); });
+      localStorage.setItem('debts', JSON.stringify(merged));
+      debts = merged;
+      cb();
+    });
+  });
+}
+
+function loadGiftsFromCloud(cb) {
+  if (!CS) { cb(); return; }
+  CS.getKeys(function(err, keys) {
+    if (err || !keys) { cb(); return; }
+    var gKeys = keys.filter(function(k){ return k.slice(0,2) === 'g_'; });
+    if (!gKeys.length) { cb(); return; }
+    CS.getItems(gKeys, function(err2, vals) {
+      if (err2 || !vals) { cb(); return; }
+      var local = JSON.parse(localStorage.getItem('gifts') || '[]');
+      var byId = {};
+      local.forEach(function(g) { byId[g.id] = g; });
+      gKeys.forEach(function(k) {
+        if (!vals[k]) return;
+        var id = k.slice(2);
+        try {
+          var cg = JSON.parse(vals[k]);
+          if (!byId[id]) byId[id] = {id:id, collection:cg.collection||'', model:cg.model||'', background:cg.background||'', price:cg.price||'', date:cg.date||'', market:cg.market||'', gift:cg.gift||'', person:cg.person||''};
+        } catch(e) {}
+      });
+      local.forEach(function(g) { if (!vals['g_'+g.id]) try { CS.setItem('g_'+g.id, JSON.stringify({collection:g.collection,model:g.model,background:g.background,price:g.price,date:g.date,market:g.market,gift:g.gift,person:g.person||''})); } catch(e) {} });
+      var merged = Object.keys(byId).map(function(id){ return byId[id]; });
+      localStorage.setItem('gifts', JSON.stringify(merged));
+      gifts = merged;
+      cb();
+    });
+  });
+}
+
 function loadFinFromCloud(cb) {
   if (!CS) { cb(); return; }
   CS.getItems(_FIN_CLOUD_KEYS, function(err, vals) {
@@ -643,13 +721,15 @@ function notify(type) { try { if(tg) tg.HapticFeedback.notificationOccurred(type
 
 // ── DEBTS ─────────────────────────────────────────
 function loadDebts() {
-  fetch(API+'/freelance-api').then(r=>r.json()).then(function(d) {
-    debts = d.debts || [];
-    debts.forEach(function(d){ d._deadline = getDeadline(d.id); });
+  var local = JSON.parse(localStorage.getItem('debts') || '[]');
+  local.forEach(function(d){ d._deadline = getDeadline(d.id); });
+  debts = local;
+  if (!_debtsCloudLoaded) {
+    _debtsCloudLoaded = true;
+    loadDebtsFromCloud(function() { renderDebts(); });
+  } else {
     renderDebts();
-      }).catch(function() {
-    document.getElementById('debts-list').innerHTML = '<div class="empty"><i>⚠️</i><b>Ошибка загрузки</b><span>Проверьте соединение</span></div>';
-  });
+  }
 }
 
 function isArchived(d) { return !!d.closedAt || !!localStorage.getItem('arc_'+d.id); }
@@ -736,14 +816,12 @@ function addDebt() {
   var pr=document.getElementById('d-pr').value.trim();
   var mg=document.getElementById('d-mg').value.trim();
   if (!co) { if(tg) tg.showAlert('Укажите компанию'); else alert('Укажите компанию'); return; }
-  var btn=document.getElementById('d-submit'); btn.disabled=true;
-  fetch(API+'/freelance-api-add?company='+encodeURIComponent(co)+'&project='+encodeURIComponent(pr)+'&amount=0&manager='+encodeURIComponent(mg))
-    .then(function(r){return r.json();})
-    .then(function(d){
-      btn.disabled=false;
-      if(d.ok){ notify('success'); closeDebtAdd(); loadDebts(); }
-      else { if(tg) tg.showAlert('Ошибка: '+d.error); else alert('Ошибка'); }
-    }).catch(function(){ btn.disabled=false; if(tg) tg.showAlert('Ошибка сети'); });
+  var newDebt = {id:genId(), company:co, project:pr, manager:mg, history:[], createdAt:new Date().toISOString()};
+  debts.push(newDebt);
+  saveDebts();
+  notify('success');
+  closeDebtAdd();
+  renderDebts();
 }
 
 // ── DEBT DETAIL ───────────────────────────────────
@@ -947,26 +1025,23 @@ function addWork() {
   var dt = _workDate;
   if (!am || Number(am) === 0) { if(tg) tg.showAlert('Введите сумму'); else alert('Введите сумму'); return; }
   var signedAm = String(Math.abs(Number(am)) * _workSign);
-  var btn=document.getElementById('det-pay-btn'); btn.disabled=true;
   var today = new Date().toISOString().split('T')[0];
   var nowISO = new Date().toISOString();
-  var apiDate, localEntry;
+  var localEntry;
   if (dt && dt !== today) {
-    // Пользователь выбрал другую дату — это дата работы, записываем отдельно от времени записи
-    apiDate = dt;
     localEntry = {amount:Number(signedAm), date:dt, recordedAt:nowISO, comment:cm};
   } else {
-    apiDate = nowISO;
     localEntry = {amount:Number(signedAm), date:nowISO, comment:cm};
   }
-  fetch(API+'/freelance-api-history?id='+encodeURIComponent(curDebt.id)+'&amount='+encodeURIComponent(signedAm)+'&comment='+encodeURIComponent(cm)+'&date='+encodeURIComponent(apiDate))
-    .then(function(r){return r.json();})
-    .then(function(d){
-      btn.disabled=false;
-      if(d.ok){ notify('success'); curDebt.history=curDebt.history||[]; curDebt.history.push(localEntry); renderDet(); loadDebts(); }
-    }).catch(function(){ btn.disabled=false; });
-}
-function editHistDate(origIdx) { _editHistIdx = origIdx; haptic('light'); renderDet(); }
+  curDebt.history = curDebt.history || [];
+  curDebt.history.push(localEntry);
+  var di = debts.findIndex(function(d){ return d.id === curDebt.id; });
+  if (di !== -1) debts[di] = curDebt;
+  saveDebts();
+  notify('success');
+  renderDet();
+  renderDebts();
+}function editHistDate(origIdx) { _editHistIdx = origIdx; haptic('light'); renderDet(); }
 function cancelHistDate() { _editHistIdx = -1; renderDet(); }
 function saveHistDate(origIdx) {
   var inp = document.getElementById('hedit-'+origIdx);
@@ -979,14 +1054,17 @@ function saveHistDate(origIdx) {
 function delDebt() {
   function go() {
     haptic('heavy');
-    fetch(API+'/freelance-api-del?id='+encodeURIComponent(curDebt.id))
-      .then(function(r){return r.json();})
-      .then(function(d){ if(d.ok){ notify('success'); closeDebtDet(); loadDebts(); } });
+    var id = curDebt.id;
+    debts = debts.filter(function(d){ return d.id !== id; });
+    if (CS) try { CS.removeItem('d_'+id); } catch(e) {}
+    saveDebts();
+    notify('success');
+    closeDebtDet();
+    renderDebts();
   }
   if(tg) tg.showConfirm('Удалить долг «'+curDebt.company+'»?', function(ok){ if(ok) go(); });
   else if(confirm('Удалить?')) go();
-}
-function archiveDebt() {
+}function archiveDebt() {
   if (!curDebt) return;
   localStorage.setItem('arc_'+curDebt.id, new Date().toISOString().split('T')[0]);
   haptic('light');
@@ -1005,22 +1083,16 @@ function toggleTonPanel() {
 
 // ── GIFTS ─────────────────────────────────────────
 function loadGifts() {
-  fetch(API+'/freelance-gifts').then(r=>r.json()).then(function(d) {
-    gifts = d.gifts || [];
-    var pending = localStorage.getItem('gimg_pending');
-    if (pending && gifts.length) {
-      var last = gifts[gifts.length-1];
-      if (last && last.id && !localStorage.getItem('gimg_'+last.id)) {
-        try { localStorage.setItem('gimg_'+last.id, pending); localStorage.removeItem('gimg_pending'); } catch(e){}
-      }
-    }
+  var local = JSON.parse(localStorage.getItem('gifts') || '[]');
+  gifts = local;
+  if (!_giftsCloudLoaded) {
+    _giftsCloudLoaded = true;
+    loadGiftsFromCloud(function() { renderGifts(); renderTon(); });
+  } else {
     renderGifts();
     renderTon();
-  }).catch(function() {
-    document.getElementById('gifts-list').innerHTML = '<div class="empty"><i>⚠️</i><b>Ошибка загрузки</b></div>';
-  });
+  }
 }
-
 function renderGifts() {
   var totTon = gifts.reduce(function(s,g){ return s+Number(g.price||0); },0);
   var sum = document.getElementById('gifts-summary');
@@ -1098,27 +1170,25 @@ function addGift() {
   var dt=document.getElementById('g-dt').value;
   var mk=document.getElementById('g-mk').value.trim();
   if (!col) { if(tg) tg.showAlert('Укажите коллекцию'); else alert('Укажите коллекцию'); return; }
-  var btn=document.getElementById('g-submit'); btn.disabled=true;
-  fetch(API+'/freelance-gifts-add?person=&collection='+encodeURIComponent(col)+'&model='+encodeURIComponent(mod)+'&background='+encodeURIComponent(bg)+'&price='+encodeURIComponent(pr)+'&date='+encodeURIComponent(dt)+'&market='+encodeURIComponent(mk)+'&gift='+encodeURIComponent(col+(mod?' '+mod:'')))
-    .then(function(r){return r.json();})
-    .then(function(d){
-      btn.disabled=false;
-      if(d.ok){
-        notify('success');
-        addAC('col',col); addAC('mod',mod); addAC('bg',bg); addAC('mk',mk);
-        if(_giftImgData) {
-          if (d.id) {
-            try { localStorage.setItem('gimg_'+d.id, _giftImgData); } catch(e){}
-          } else {
-            try { localStorage.setItem('gimg_pending', _giftImgData); } catch(e){}
-          }
-          _giftImgData = null;
-        }
-        closeGiftAdd(); loadGifts();
-      } else { if(tg) tg.showAlert('Ошибка'); else alert('Ошибка'); }
-    }).catch(function(){ btn.disabled=false; });
-}
-function openGiftDet(id) {
+  var newGift = {
+    id: genId(),
+    collection: col, model: mod, background: bg,
+    price: pr, date: dt, market: mk,
+    gift: col + (mod ? ' ' + mod : ''),
+    person: ''
+  };
+  gifts.push(newGift);
+  if (_giftImgData) {
+    try { localStorage.setItem('gimg_'+newGift.id, _giftImgData); } catch(e) {}
+    _giftImgData = null;
+  }
+  addAC('col',col); addAC('mod',mod); addAC('bg',bg); addAC('mk',mk);
+  saveGifts();
+  notify('success');
+  closeGiftAdd();
+  renderGifts();
+  renderTon();
+}function openGiftDet(id) {
   haptic('light');
   curGift = gifts.find(function(g){ return g.id===id; });
   if (!curGift) return;
@@ -1165,21 +1235,19 @@ function delGiftFromDet() {
   function go() {
     haptic('heavy');
     var id = curGift.id;
-    fetch(API+'/freelance-gifts-del?id='+encodeURIComponent(id))
-      .then(function(r){return r.json();})
-      .then(function(d){
-        if(d.ok){
-          notify('success');
-          try { localStorage.removeItem('gimg_'+id); } catch(e){}
-          closeGiftDet(); loadGifts();
-        }
-      });
+    gifts = gifts.filter(function(g){ return g.id !== id; });
+    if (CS) try { CS.removeItem('g_'+id); } catch(e) {}
+    try { localStorage.removeItem('gimg_'+id); } catch(e) {}
+    saveGifts();
+    notify('success');
+    closeGiftDet();
+    renderGifts();
+    renderTon();
   }
   var name = curGift.collection+(curGift.model?' · '+curGift.model:'');
   if(tg) tg.showConfirm('Удалить «'+name+'»?', function(ok){ if(ok) go(); });
   else if(confirm('Удалить?')) go();
 }
-
 // ── FINANCE ───────────────────────────────────────
 function loadFinData() {
   loadFinFromCloud(function() {
