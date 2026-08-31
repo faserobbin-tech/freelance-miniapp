@@ -400,7 +400,9 @@ function saveGifts() {
 
 function loadDebtsFromCloud(cb) {
   if (!CS) { cb(); return; }
+  var done = false; var t = setTimeout(function(){ if(!done){done=true; cb();} }, 3000);
   CS.getKeys(function(err, keys) {
+    if (done) return; done = true; clearTimeout(t);
     if (err || !keys) { cb(); return; }
     var dKeys = keys.filter(function(k){ return k.slice(0,2) === 'd_'; });
     if (!dKeys.length) { cb(); return; }
@@ -430,7 +432,9 @@ function loadDebtsFromCloud(cb) {
 
 function loadGiftsFromCloud(cb) {
   if (!CS) { cb(); return; }
+  var done = false; var t = setTimeout(function(){ if(!done){done=true; cb();} }, 3000);
   CS.getKeys(function(err, keys) {
+    if (done) return; done = true; clearTimeout(t);
     if (err || !keys) { cb(); return; }
     var gKeys = keys.filter(function(k){ return k.slice(0,2) === 'g_'; });
     if (!gKeys.length) { cb(); return; }
@@ -724,11 +728,10 @@ function loadDebts() {
   var local = JSON.parse(localStorage.getItem('debts') || '[]');
   local.forEach(function(d){ d._deadline = getDeadline(d.id); });
   debts = local;
+  renderDebts(); // show immediately from localStorage
   if (!_debtsCloudLoaded) {
     _debtsCloudLoaded = true;
-    loadDebtsFromCloud(function() { renderDebts(); });
-  } else {
-    renderDebts();
+    loadDebtsFromCloud(function() { renderDebts(); }); // update from cloud async
   }
 }
 
@@ -1085,12 +1088,11 @@ function toggleTonPanel() {
 function loadGifts() {
   var local = JSON.parse(localStorage.getItem('gifts') || '[]');
   gifts = local;
+  renderGifts();  // show immediately from localStorage
+  renderTon();
   if (!_giftsCloudLoaded) {
     _giftsCloudLoaded = true;
-    loadGiftsFromCloud(function() { renderGifts(); renderTon(); });
-  } else {
-    renderGifts();
-    renderTon();
+    loadGiftsFromCloud(function() { renderGifts(); renderTon(); }); // update from cloud async
   }
 }
 function renderGifts() {
