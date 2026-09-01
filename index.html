@@ -462,7 +462,9 @@ function loadGiftsFromCloud(cb) {
 
 function loadFinFromCloud(cb) {
   if (!CS) { cb(); return; }
+  var done = false; var t = setTimeout(function(){ if(!done){done=true; cb();} }, 3000);
   CS.getItems(_FIN_CLOUD_KEYS, function(err, vals) {
+    if (done) return; done = true; clearTimeout(t);
     if (!err && vals) {
       _FIN_CLOUD_KEYS.forEach(function(k) {
         if (vals[k]) {
@@ -650,7 +652,8 @@ function showTab(t) {
     if (tg) tg.MainButton.hide();
     if (!gifts.length) loadGifts();
     if (!tonRate || Date.now()-tonRateAt > 300000) loadTonRate();
-    loadFinData();
+    renderFinance(); // immediate
+    loadFinData();   // then sync from cloud and re-render
   }
 }
 
